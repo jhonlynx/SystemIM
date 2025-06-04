@@ -19,6 +19,70 @@ from PyQt5.QtGui import QPixmap, QImage
 
 from backend.adminBack import adminPageBack
 
+from PyQt5.QtCore import QRunnable, QThreadPool, QObject, pyqtSignal
+
+from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
+
+class BillWorkerSignals(QObject):
+    progress = pyqtSignal(int, int)  # i, total
+    finished = pyqtSignal(str)       # merged_pdf_path
+    error = pyqtSignal(str)
+
+class BillWorker(QRunnable):
+    def __init__(self, data, template_path, temp_folder, fill_word_template, convert_to_pdf):
+        super().__init__()
+        self.signals = BillWorkerSignals()
+        self.data = data
+        self.template_path = template_path
+        self.temp_folder = temp_folder
+        self.fill_word_template = fill_word_template
+        self.convert_to_pdf = convert_to_pdf
+
+    @pyqtSlot()
+    def run(self):
+        from PyPDF2 import PdfMerger
+        import pythoncom
+        import os
+
+        pythoncom.CoInitialize()
+
+        pdf_paths = []
+        backend = adminPageBack()
+
+        try:
+            for i, billing in enumerate(self.data):
+                billing_code = billing[0]
+                billing_id = backend.get_billing_id(billing_code)
+                bill_data = backend.get_bill_data_by_code(billing_id)
+                if not bill_data:
+                    continue
+
+                docx_path = os.path.join(self.temp_folder, f"bill_{i}.docx")
+                pdf_path = os.path.join(self.temp_folder, f"bill_{i}.pdf")
+
+                self.fill_word_template(bill_data, self.template_path, docx_path)
+                self.convert_to_pdf(docx_path, pdf_path)
+                pdf_paths.append(pdf_path)
+
+                self.signals.progress.emit(i + 1, len(self.data))
+
+            merged_pdf_path = os.path.join(self.temp_folder, "merged_batch_print.pdf")
+            merger = PdfMerger()
+            for path in pdf_paths:
+                merger.append(path)
+            merger.write(merged_pdf_path)
+            merger.close()
+
+            self.signals.finished.emit(merged_pdf_path)
+
+        except Exception as e:
+            self.signals.error.emit(str(e))
+
+        finally:
+            pythoncom.CoUninitialize() 
+
+
+
 class EmployeeBillingPage(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__()
@@ -77,6 +141,92 @@ class EmployeeBillingPage(QtWidgets.QWidget):
         action_layout.addWidget(print_btn)
         self.billing_table.setCellWidget(row, 8, action_widget)
 
+    class LoadingDialog(QtWidgets.QDialog):
+        def __init__(self, message="Processing..."):
+            super().__init__()
+            self.setWindowFlags(QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint)
+            self.setModal(True)
+            self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
+            # Main container
+            container = QtWidgets.QFrame()
+            container.setStyleSheet("""
+                QFrame {
+                    background-color: #ffffff;
+                    border-radius: 16px;
+                    border: none;
+                    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+                }
+            """)
+
+            layout = QtWidgets.QVBoxLayout(self)
+            layout.setContentsMargins(15, 15, 15, 15)
+            layout.addWidget(container)
+
+            inner_layout = QtWidgets.QVBoxLayout(container)
+            inner_layout.setSpacing(15)
+            inner_layout.setContentsMargins(20, 20, 20, 20)
+            
+
+            # Spinner icon or fallback
+            self.spinner = QtWidgets.QLabel()
+            self.spinner.setFixedSize(64, 64)
+            self.spinner.setAlignment(QtCore.Qt.AlignCenter)
+
+            # Absolute path to GIF
+            spinner_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "gifs", "Spinner.gif"))
+            print("Spinner path:", spinner_path)
+
+            self.movie = QtGui.QMovie(spinner_path)
+            if not self.movie.isValid():
+                self.spinner.setText("⏳ Loading...")
+            else:
+                self.movie.setScaledSize(QtCore.QSize(64, 64))
+                self.spinner.setMovie(self.movie)
+                self.movie.start()
+
+
+            # Message label
+            self.label = QtWidgets.QLabel(message)
+            self.label.setAlignment(QtCore.Qt.AlignCenter)
+            self.label.setStyleSheet("font-size: 16px; color: #333333;")
+
+            # Progress bar
+            self.progress = QtWidgets.QProgressBar()
+            self.progress.setRange(0, 0)
+            self.progress.setTextVisible(False)
+            self.progress.setStyleSheet("""
+                QProgressBar {
+                    background-color: #e0e0e0;
+                    border: none;
+                    border-radius: 6px;
+                    height: 14px;
+                }
+                QProgressBar::chunk {
+                    background-color: #4CAF50;
+                    border-radius: 6px;
+                }
+            """)
+            inner_layout.addStretch()
+            inner_layout.addWidget(self.spinner, alignment=QtCore.Qt.AlignCenter)
+            inner_layout.addWidget(self.label, alignment=QtCore.Qt.AlignCenter)
+            inner_layout.addWidget(self.progress)
+            inner_layout.addStretch()
+
+
+            self.setFixedSize(320, 240)
+
+        def set_message(self, text):
+            self.label.setText(text)
+
+        def set_progress(self, value, max_value=100):
+            self.progress.setRange(0, max_value)
+            self.progress.setValue(value)
+            QtWidgets.QApplication.processEvents()
+
+
+
+
     def fill_word_template(self, data, template_path="bill_template.docx", output_path="generated_bill.docx"):
         doc = Document(template_path)
 
@@ -110,53 +260,67 @@ class EmployeeBillingPage(QtWidgets.QWidget):
         print(f"✅ PDF saved to {pdf_path}")
 
     def print_bill(self, billing_data):
+        import os
+        from PyQt5.QtCore import QThreadPool
+
         try:
-            # Extract billing code from row data
-            IadminBack = adminPageBack()
-            billing_id = IadminBack.get_billing_id(billing_data[0])
-
-            # Fetch detailed data from your database using your backend
-            backend = adminPageBack()
-            bill_data = backend.get_bill_data_by_code(billing_id)
-
-            if not bill_data:
-                QtWidgets.QMessageBox.warning(self, "Error", "No billing data found.")
-                return
-
-            # Get base directory (safe version)
-            try:
-                base_dir = os.path.abspath(os.path.join(os.path.dirname(_file_), ".."))
-            except NameError:
-                base_dir = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), ".."))
-
-            # Build file paths
+            # Set up base paths
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), ".."))
             template_path = os.path.join(base_dir, "templates", "bill_template.docx")
-            output_path = os.path.join(base_dir, "generated_bill.docx")
-            pdf_path = os.path.join(base_dir, "generated_bill.pdf")
+            temp_folder = os.path.join(base_dir, "temp_single_bill")
+            os.makedirs(temp_folder, exist_ok=True)
 
-            # Check if template exists
-            if not os.path.exists(template_path):
-                QtWidgets.QMessageBox.warning(self, "Template Missing", f"Template not found at:\n{template_path}")
-                return
+            # 🔄 Clear previous files
+            for f in os.listdir(temp_folder):
+                file_path = os.path.join(temp_folder, f)
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
 
-            # Fill Word template and convert to PDF
-            self.fill_word_template(bill_data, template_path, output_path)
-            self.convert_to_pdf(output_path, pdf_path)
+            # ✅ Show loading dialog
+            self.loading = self.LoadingDialog("Generating bill...")
+            self.loading.set_progress(0, 1)
+            self.loading.show()
 
-            # Show preview window
-            self.preview_generated_pdf(pdf_path)
+            # ✅ Background worker (reusing the same logic)
+            worker = BillWorker(
+                [billing_data],
+                template_path,
+                temp_folder,
+                self.fill_word_template,
+                self.convert_to_pdf
+            )
+            worker.signals.progress.connect(lambda i, total: (
+                self.loading.set_message(f"Generating bill..."),
+                self.loading.set_progress(i, total)
+            ))
+            worker.signals.finished.connect(self.on_solo_generation_finished)
+            worker.signals.error.connect(self.on_generation_failed)
+
+            QThreadPool.globalInstance().start(worker)
 
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to print bill: {str(e)}")
+            if hasattr(self, "loading"):
+                self.loading.close()
+            QtWidgets.QMessageBox.warning(self, "Bill Generation Failed", str(e))
 
-    def preview_generated_pdf(self, pdf_path):
+    def on_solo_generation_finished(self, merged_pdf_path):
+        self.loading.close()
+        self.preview_window = self.BillPreview(merged_pdf_path)
+        self.preview_window.show()
+
+
+
+    def preview_generated_pdf(self, pdf_path, batch_mode=True):
         # Display the PDF preview window using BillPreview class
-        self.preview_window = self.BillPreview(pdf_path)
+        self.preview_window = self.BillPreview(pdf_path, batch_mode=batch_mode)
         self.preview_window.show()
 
     class BillPreview(QWidget):
-        def __init__(self, pdf_path):
+        def __init__(self, pdf_path, batch_mode=False):
             super().__init__()
+            self.pdf_path = pdf_path
+            self.batch_mode = batch_mode
+
             self.setWindowTitle("Bill Preview (Image)")
             self.setMinimumSize(900, 700)
 
@@ -171,20 +335,71 @@ class EmployeeBillingPage(QtWidgets.QWidget):
 
             container_layout = QVBoxLayout(container)
 
-            # Load PDF pages as images using PyMuPDF (fitz)
             try:
-                doc = fitz.open(pdf_path)
-                for page in doc:
-                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # High-res render
-                    image_format = QImage.Format_RGBA8888 if pix.alpha else QImage.Format_RGB888
-                    qimage = QImage(pix.samples, pix.width, pix.height, pix.stride, image_format)
-                    pixmap = QPixmap.fromImage(qimage)
-                    label = QLabel()
-                    label.setPixmap(pixmap)
-                    container_layout.addWidget(label)
+                # Load PDF pages as images using PyMuPDF (fitz)
+                try:
+                    doc = fitz.open(pdf_path)
+                except Exception as e:
+                    error_label = QLabel(f"❌ Failed to open PDF: {e}")
+                    container_layout.addWidget(error_label)
+                    return
+                for i, page in enumerate(doc):
+                    try:
+                        # Render page to image
+                        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                        image_format = QImage.Format_RGBA8888 if pix.alpha else QImage.Format_RGB888
+                        qimage = QImage(pix.samples, pix.width, pix.height, pix.stride, image_format)
+                        pixmap = QPixmap.fromImage(qimage)
+
+                        # Add label for batch mode
+                        if self.batch_mode:
+                            page_label = QLabel(f"📄 - BILL {i + 1}")
+                            page_label.setAlignment(QtCore.Qt.AlignCenter)
+                            page_label.setStyleSheet("color: red; font-size: 14px; font-weight: bold; padding: 10px;")
+                            container_layout.addWidget(page_label)
+
+                        # Show rendered image
+                        image_label = QLabel()
+                        image_label.setPixmap(pixmap)
+                        image_label.setAlignment(QtCore.Qt.AlignCenter)
+                        container_layout.addWidget(image_label)
+
+                        # Reprint button (batch mode only)
+                        if self.batch_mode:
+                            reprint_button = QPushButton(f"🖨 Reprint BILL {i + 1}")
+                            reprint_button.setStyleSheet("""
+                                QPushButton {
+                                    background-color: #4CAF50;
+                                    color: white;
+                                    font-weight: bold;
+                                    padding: 6px 12px;
+                                    border-radius: 4px;
+                                }
+                                QPushButton:hover {
+                                    background-color: #45A049;
+                                }
+                            """)
+                            reprint_button.clicked.connect(lambda _, idx=i: self.print_single_page(idx))
+                            container_layout.addWidget(reprint_button)
+
+                    except Exception as page_error:
+                        error_label = QLabel(f"❌ Failed to load page {i + 1}: {page_error}")
+                        container_layout.addWidget(error_label)
+
+                    # Spacing between each bill
+                    spacer = QLabel()
+                    spacer.setFixedHeight(40)
+                    container_layout.addWidget(spacer)
+
             except Exception as e:
-                error_label = QLabel(f"Failed to load PDF: {e}")
+                error_label = QLabel(f"❌ Failed to load preview:\n{str(e)}")
+                error_label.setAlignment(QtCore.Qt.AlignCenter)
+                error_label.setStyleSheet("color: red; font-weight: bold; padding: 20px;")
                 container_layout.addWidget(error_label)
+
+
+
+
 
             # Print button
             print_btn = QPushButton("Print")
@@ -192,8 +407,127 @@ class EmployeeBillingPage(QtWidgets.QWidget):
             layout.addWidget(print_btn)
 
         def print_pdf(self):
-            # You can replace this with actual printing logic if needed
-            QtWidgets.QMessageBox.information(self, "Print", "Sending PDF to printer...")
+            printer = QPrinter()
+            printer.setPageSize(QPrinter.A4)
+            printer.setFullPage(True)
+
+            # Show print dialog
+            dialog = QPrintDialog(printer, self)
+            if dialog.exec_() == QPrintDialog.Accepted:
+                try:
+                    import fitz  # PyMuPDF
+                    doc = fitz.open(self.pdf_path)
+                    painter = QtGui.QPainter(printer)
+
+                    for i, page in enumerate(doc):
+                        if i > 0:
+                            printer.newPage()
+
+                        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                        image_format = QImage.Format_RGBA8888 if pix.alpha else QImage.Format_RGB888
+                        qimage = QImage(pix.samples, pix.width, pix.height, pix.stride, image_format)
+                        pixmap = QPixmap.fromImage(qimage)
+
+                        rect = painter.viewport()
+                        size = pixmap.size()
+                        size.scale(rect.size(), QtCore.Qt.KeepAspectRatio)
+                        painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
+                        painter.setWindow(pixmap.rect())
+                        painter.drawPixmap(0, 0, pixmap)
+
+                    painter.end()
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(self, "Error", f"Failed to print PDF: {str(e)}")
+        
+        def print_single_page(self, page_index):
+            printer = QPrinter()
+            printer.setPageSize(QPrinter.A4)
+            printer.setFullPage(True)
+
+            dialog = QPrintDialog(printer, self)
+            if dialog.exec_() == QPrintDialog.Accepted:
+                try:
+                    import fitz
+                    doc = fitz.open(self.pdf_path)
+                    page = doc[page_index]
+
+                    painter = QtGui.QPainter(printer)
+
+                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                    image_format = QImage.Format_RGBA8888 if pix.alpha else QImage.Format_RGB888
+                    qimage = QImage(pix.samples, pix.width, pix.height, pix.stride, image_format)
+                    pixmap = QPixmap.fromImage(qimage)
+
+                    rect = painter.viewport()
+                    size = pixmap.size()
+                    size.scale(rect.size(), QtCore.Qt.KeepAspectRatio)
+                    painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
+                    painter.setWindow(pixmap.rect())
+                    painter.drawPixmap(0, 0, pixmap)
+
+                    painter.end()
+                except Exception as e:
+                    QtWidgets.QMessageBox.warning(self, "Error", f"Failed to reprint: {str(e)}")
+
+
+    def print_all_on_page(self):
+        from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
+        import os
+
+        # Base path setup
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), ".."))
+        template_path = os.path.join(base_dir, "templates", "bill_template.docx")
+
+        if not os.path.exists(template_path):
+            QtWidgets.QMessageBox.warning(self, "Template Missing", f"Template not found at:\n{template_path}")
+            return
+
+        # Prepare temp folder
+        temp_folder = os.path.join(base_dir, "temp_bills")
+        os.makedirs(temp_folder, exist_ok=True)
+
+        # Clear old files
+        for f in os.listdir(temp_folder):
+            file_path = os.path.join(temp_folder, f)
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+
+
+        # Get current page data
+        start_idx = (self.current_page - 1) * self.rows_per_page
+        end_idx = min(start_idx + self.rows_per_page, len(self.filtered_data))
+        page_data = self.filtered_data[start_idx:end_idx]
+
+        # Show animated loading dialog
+        self.loading = self.LoadingDialog("Generating bills...")
+        self.loading.set_progress(0, len(page_data))
+        self.loading.show()
+
+        # Start background generation
+        worker = BillWorker(page_data, template_path, temp_folder, self.fill_word_template, self.convert_to_pdf)
+        worker.signals.progress.connect(lambda i, total: (
+            self.loading.set_message(f"Generating BILL {i} of {total}"),
+            self.loading.set_progress(i, total)
+        ))
+        worker.signals.finished.connect(self.on_generation_finished)
+        worker.signals.error.connect(self.on_generation_failed)
+
+        QThreadPool.globalInstance().start(worker)
+
+
+
+    def on_generation_finished(self, merged_pdf_path):
+        self.loading.close()
+        self.preview_window = self.BillPreview(merged_pdf_path, batch_mode=True)
+        self.preview_window.show()
+
+    def on_generation_failed(self, error_msg):
+        self.loading.close()
+        QtWidgets.QMessageBox.critical(self, "Generation Failed", error_msg)
+
+
+
+
     def paint_bill(self, printer, billing_data):
         """Paint the bill content for printing"""
         painter = QtGui.QPainter(printer)
@@ -579,6 +913,25 @@ class EmployeeBillingPage(QtWidgets.QWidget):
         pagination_layout.addWidget(self.rows_per_page_combo)
         
         layout.addLayout(pagination_layout)
+
+        # Add batch print button
+        batch_print_btn = QtWidgets.QPushButton("🖨 Print All on This Page")
+        batch_print_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #00796B;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-family: 'Roboto', sans-serif;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #004D40;
+            }
+        """)
+        batch_print_btn.clicked.connect(self.print_all_on_page)
+        layout.addWidget(batch_print_btn)
+
         
         # Calculate total pages and update table
         self.update_pagination()
