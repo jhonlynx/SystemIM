@@ -65,7 +65,7 @@ class ClientRepository:
                 METER_ID, ADDRESS_ID, CATEG_ID, CLIENT_MNAME, CLIENT_STATUS, CLIENT_NUMBER
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                'CL-' || LPAD(nextval('client_number_seq')::text, 5, '0')        
+                LPAD(nextval('client_number_seq')::text, 5, '0')        
             )
             RETURNING CLIENT_ID;
         """, (

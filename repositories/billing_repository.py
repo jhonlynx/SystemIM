@@ -16,9 +16,94 @@ class BillingRepository:
         cursor.close()
         conn.close()
         return bill
-    
-    
-    def create_billing(self, 
+
+    def get_bill_data(self, billing_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+                       SELECT c.CLIENT_NAME,
+                              c.CLIENT_LNAME,
+                              c.CLIENT_LOCATION,
+                              c.CLIENT_NUMBER,
+                              b.BILLING_CODE,
+                              b.BILLING_DUE,
+                              CURRENT_DATE,
+                              r.READING_PREV,
+                              r.READING_CURRENT,
+                              b.BILLING_CONSUMPTION,
+                              b.BILLING_AMOUNT,
+                              c.CATEG_ID,
+                              b.BILLING_SUB_CAPITAL,
+                              b.BILLING_LATE_PAYMENT,
+                              b.BILLING_PENALTY,
+                              b.BILLING_TOTAL_CHARGE,
+                              b.BILLING_TOTAL
+                       FROM BILLING AS b
+                                JOIN CLIENT AS c ON b.CLIENT_ID = c.CLIENT_ID
+                                JOIN READING AS r ON b.READING_ID = r.READING_ID
+                       WHERE b.BILLING_ID = %s;
+                       """, (billing_id,))
+
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not row:
+            return None  # No data found
+
+        (
+            client_fname, client_lname, address, client_number, bill_code, due_date, current_date,
+            prev_reading, current_reading, meter_consumed, amount, categ_id,
+            subscribe_capital, late_payment, penalty, total_charges, total_amount
+        ) = row
+
+        # Concatenate the first name and last name
+        full_name = f"{client_lname}, {client_fname}"
+
+        # Determine category code based on CATEG_ID
+        category_code_map = {
+            100001: 1,
+            100002: 2,
+            100003: 3,
+            100004: 4
+        }
+        category_code = category_code_map.get(categ_id, 0)  # Default to 0 if not found
+
+        data = {
+            "client_name": full_name,
+            "address": address,
+            "client_num": client_number,
+            "bill_code": bill_code,
+            "due_date": due_date,
+            "current_date": current_date,
+            "prev_reading": prev_reading,
+            "current_reading": current_reading,
+            "meter_consumed": meter_consumed,
+            "amount": amount,
+            "category_code": category_code,
+            "subscribe_capital": subscribe_capital,
+            "late_payment": late_payment,
+            "penalty": penalty,
+            "total_charges": total_charges,
+            "total_amount_due": total_amount
+        }
+
+        return data
+
+    def get_billing_id(self, billing_code):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT BILLING_ID FROM BILLING WHERE BILLING_CODE = %s", (billing_code,))
+        billing_id = cursor.fetchone()[0]
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return billing_id
+
+    def create_billing(self,
                        billing_due, 
                        billing_total, 
                        billing_consumption, 
@@ -37,7 +122,7 @@ class BillingRepository:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO BILLING (BILLING_DUE, BILLING_TOTAL, BILLING_CONSUMPTION, READING_ID, CLIENT_ID, CATEG_ID, BILLING_DATE, BILLING_CODE, BILLING_STATUS, BILLING_AMOUNT, BILLING_SUB_CAPITAL, BILLING_LATE_PAYMENT, BILLING_PENALTY, BILLING_TOTAL_CHARGE)"
-            "VALUES (%s, %s, %s, %s, %s, %s,%s, 'BCODE-' || LPAD(nextval('billing_code_seq')::text, 5, '0'),  %s, %s, %s, %s, %s, %s) RETURNING BILLING_ID, BILLING_CODE;",
+            "VALUES (%s, %s, %s, %s, %s, %s,%s, LPAD(nextval('billing_code_seq')::text, 5, '0'),  %s, %s, %s, %s, %s, %s) RETURNING BILLING_ID, BILLING_CODE;",
             (          billing_due, 
                        billing_total, 
                        billing_consumption, 

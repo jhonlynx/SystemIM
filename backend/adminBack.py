@@ -136,10 +136,9 @@ class adminPageBack:
 
     def update_meter_latest_reading(self, pres_read, read_date, meter_id):
         meter_repository = MeterRepository()
-        result = meter_repository.update_meter(pres_read, read_date, meter_id)
-        self.log_action(f"Updated latest reading for meter ID: {meter_id}")
-        return result
 
+        return meter_repository.update_meter_latest_reading(pres_read, read_date, meter_id)
+    
     def fetch_rate_blocks_by_categ(self, categ_id):
         rateblock_repo = RateBlockRepository()
         blocks = rateblock_repo.get_rate_block_by_category(categ_id)
@@ -178,24 +177,13 @@ class adminPageBack:
 
     def get_meter_by_id(self, meter_id):
         meter_repository = MeterRepository()
-        meter = meter_repository.get_meter_by_id(meter_id)
-        self.log_action(f"Fetched meter by ID: {meter_id}")
-        return meter
 
-    def fetch_readings_by_meter_id(self, meter_id):
-        reading_repository = MeterRepository()
-        readings = reading_repository.get_readings_by_meter_id(meter_id)
-        self.log_action(f"Fetched readings for meter ID: {meter_id}")
-        return readings
+        return meter_repository.get_meter_by_id(meter_id)
 
-    def fetch_transaction_logs(self):
-        transaction_repo = TransactionRepository()
-        logs = transaction_repo.get_all_transaction_logs()
-        self.log_action("Fetched transaction logs")
-        return logs
+    def get_bill_data_by_code(self, billing_id):
+        billing_repository = BillingRepository()
+        return billing_repository.get_bill_data(billing_id)
 
-    def fetch_system_logs(self):
-        transaction_repo = TransactionRepository()
-        logs = transaction_repo.get_all_system_logs()
-        self.log_action("Fetched system logs")
-        return logs
+    def get_billing_id(self, billing_code):
+        billing_repository = BillingRepository()
+        return billing_repository.get_billing_id(billing_code)
