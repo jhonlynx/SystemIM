@@ -187,3 +187,15 @@ class adminPageBack:
     def get_billing_id(self, billing_code):
         billing_repository = BillingRepository()
         return billing_repository.get_billing_id(billing_code)
+
+    def fetch_readings_by_meter_id(self, meter_id):
+        reading_repository = MeterRepository()
+        return reading_repository.get_readings_by_meter_id(meter_id)
+
+    def fetch_transaction_logs(self):
+        transaction_repo = TransactionRepository()
+        return transaction_repo.get_all_transaction_logs()
+
+    def fetch_system_logs(self):
+        transaction_repo = TransactionRepository()
+        return transaction_repo.get_all_system_logs()        
