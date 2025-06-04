@@ -177,7 +177,6 @@ class adminPageBack:
 
     def get_meter_by_id(self, meter_id):
         meter_repository = MeterRepository()
-
         return meter_repository.get_meter_by_id(meter_id)
 
     def get_bill_data_by_code(self, billing_id):
@@ -198,4 +197,16 @@ class adminPageBack:
 
     def fetch_system_logs(self):
         transaction_repo = TransactionRepository()
-        return transaction_repo.get_all_system_logs()        
+        return transaction_repo.get_all_system_logs() 
+
+    def insert_rate_block(self, is_minimum, min_con, max_con, rate, categ_id):
+        rateblock_repo = RateBlockRepository()
+        return rateblock_repo.insert_rate_block(is_minimum, min_con, max_con, rate, categ_id)
+
+    def update_rate_block(self, block_id, is_minimum, min_con, max_con, rate):
+        rateblock_repo = RateBlockRepository()
+        return rateblock_repo.update_rate_block(block_id, is_minimum, min_con, max_con, rate)
+
+    def delete_rate_block(self, block_id):
+        rateblock_repo = RateBlockRepository()
+        return rateblock_repo.delete_rate_block(block_id)

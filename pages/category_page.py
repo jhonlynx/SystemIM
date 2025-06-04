@@ -69,7 +69,7 @@ class CategoryPage(QtWidgets.QWidget):
         search_add_layout.addLayout(search_container)
 
         # Add button with icon
-        add_btn = QtWidgets.QPushButton("ADD ADDRESS", icon=QtGui.QIcon("../images/add.png"))
+        add_btn = QtWidgets.QPushButton("ADD ADDRESS", icon=QtGui.QIcon("images/add.png"))
         add_btn.setStyleSheet("""
             QPushButton {
                 background-color: rgb(229, 115, 115);
@@ -186,7 +186,7 @@ class CategoryPage(QtWidgets.QWidget):
             actions_layout.setSpacing(15)
             actions_layout.setAlignment(QtCore.Qt.AlignCenter)
 
-            edit_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("../images/edit.png"))
+            edit_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("images/edit.png"))
             edit_btn.setIconSize(QtCore.QSize(24, 24))
             edit_btn.setStyleSheet("""
                 QPushButton {
@@ -201,7 +201,7 @@ class CategoryPage(QtWidgets.QWidget):
             edit_btn.clicked.connect(lambda _, row=row: self.show_edit_category_page(row))
             actions_layout.addWidget(edit_btn)
 
-            view_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("../images/view.png"))
+            view_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("images/view.png"))
             view_btn.setIconSize(QtCore.QSize(24, 24))
             view_btn.setToolTip("View Rate Blocks")
             view_btn.setStyleSheet("""
@@ -816,14 +816,20 @@ class RateBlockPanel(QtWidgets.QWidget):
         layout.addRow("Rate:", rate_input)
         layout.addRow("Rate Type:", type_combo)
 
-        btns = QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel
-        box = QtWidgets.QDialogButtonBox(btns)
-        layout.addRow(box)
+        # Create custom buttons instead of using QDialogButtonBox
+        button_layout = QtWidgets.QHBoxLayout()
+        save_btn = QtWidgets.QPushButton("Save")
+        cancel_btn = QtWidgets.QPushButton("Cancel")
+        button_layout.addWidget(save_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addRow(button_layout)
 
         def save():
             try:
                 min_val = float(min_input.text())
-                max_val = float(max_input.text()) if max_input.text().strip() != "" else None
+                # Handle blank max consumption more carefully
+                max_text = max_input.text().strip()
+                max_val = None if max_text == "" else float(max_text)
                 rate_val = float(rate_input.text())
                 is_min = (type_combo.currentText() == "Fixed")
                 if self.is_range_overlapping(min_val, max_val, block[0] if is_edit else None):
@@ -834,13 +840,36 @@ class RateBlockPanel(QtWidgets.QWidget):
                 else:
                     self.admin.insert_rate_block(is_min, min_val, max_val, rate_val, self.category_id)
                 self.refresh_table()
-                dialog.accept()
+                QMessageBox.information(dialog, "Success", "Rate block saved successfully.")
+                # Don't close the dialog after saving to allow adding multiple rate blocks
+                if not is_edit:
+                    # Clear the form for the next entry
+                    min_input.setText("")
+                    max_input.setText("")
+                    rate_input.setText("")
+                    type_combo.setCurrentIndex(1)  # Default to "Per Cubic Meter"
+                    # Explicitly prevent the dialog from closing
+                    return False
+                else:
+                    dialog.accept()  # Close only when editing
+                    return True
             except ValueError:
                 QMessageBox.warning(dialog, "Invalid", "Please enter valid numbers.")
+                return False
 
-        box.accepted.connect(save)
-        box.rejected.connect(dialog.reject)
+        # Custom handler for save button to prevent dialog from closing
+        def on_save_clicked():
+            result = save()
+            # If we're adding a new rate block and save was successful, don't close the dialog
+            # The dialog will only close if save() returns True (which happens in edit mode)
+            if result:
+                dialog.accept()
 
+        save_btn.clicked.connect(on_save_clicked)
+        cancel_btn.clicked.connect(dialog.reject)
+
+        # Set dialog to not close automatically when a button is clicked
+        dialog.setModal(True)
         dialog.exec_()
 
     def open_panel(self):
