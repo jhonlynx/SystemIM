@@ -106,8 +106,8 @@ class AdminTransactionsPage(QtWidgets.QWidget):
             actions_layout = QtWidgets.QHBoxLayout(actions_widget)
             actions_layout.setContentsMargins(4, 4, 4, 4)
             
-            view_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("images/view.png"))
-            delete_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("images/delete.png"))
+            view_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("../images/view.png"))
+            delete_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("../images/delete.png"))
             
             view_btn.setIconSize(QtCore.QSize(24, 24))
             delete_btn.setIconSize(QtCore.QSize(24, 24))

@@ -41,8 +41,8 @@ class EmployeeBillingPage(QtWidgets.QWidget):
         
         # Try to set icon, but don't fail if file doesn't exist
         try:
-            if os.path.exists("images/print.png"):
-                print_btn.setIcon(QtGui.QIcon("images/print.png"))
+            if os.path.exists("../images/print.png"):
+                print_btn.setIcon(QtGui.QIcon("../images/print.png"))
             else:
                 print_btn.setText("🖨")  # Use emoji as fallback
         except:
@@ -336,7 +336,7 @@ class EmployeeBillingPage(QtWidgets.QWidget):
         search_add_layout.addLayout(search_container)
         
         # Add button with icon
-        add_btn = QtWidgets.QPushButton("ADD BILLING", icon=QtGui.QIcon("images/add.png"))
+        add_btn = QtWidgets.QPushButton("ADD BILLING", icon=QtGui.QIcon("../images/add.png"))
         add_btn.setStyleSheet("""
             QPushButton {
                 background-color: rgb(229, 115, 115);

@@ -63,7 +63,7 @@ class AdminCustomersPage(QtWidgets.QWidget):
                 border: none;
             }
             QComboBox::down-arrow {
-                image: url(images/dropdown.png);
+                image: url(../images/dropdown.png);
                 width: 12px;
                 height: 12px;
             }
@@ -103,7 +103,7 @@ class AdminCustomersPage(QtWidgets.QWidget):
         search_add_layout.addLayout(search_container)
         
         # Add button with icon
-        add_btn = QtWidgets.QPushButton("ADD CUSTOMER", icon=QtGui.QIcon("images/add.png"))
+        add_btn = QtWidgets.QPushButton("ADD CUSTOMER", icon=QtGui.QIcon("../images/add.png"))
         add_btn.setStyleSheet("""
             QPushButton {
                 background-color: rgb(229, 115, 115);
@@ -413,7 +413,7 @@ class AdminCustomersPage(QtWidgets.QWidget):
             # Add stretch before and after to center the button
             action_layout.addStretch()
             edit_button = QtWidgets.QPushButton()
-            edit_button.setIcon(QtGui.QIcon("images/edit.png"))  # Make sure you have the icon
+            edit_button.setIcon(QtGui.QIcon("../images/edit.png"))  # Make sure you have the icon
             edit_button.setFixedSize(30, 30)
             edit_button.setStyleSheet("""
                 QPushButton {

@@ -6,7 +6,7 @@ from repositories.category_repository import CategoryRepository
 from repositories.meter_repository import MeterRepository
 from repositories.reading_repository import ReadingRepository
 from repositories.transaction_repository import TransactionRepository
-
+from repositories.rateblock_repository import RateBlockRepository
 
 
 class adminPageBack:
@@ -108,8 +108,8 @@ class adminPageBack:
         return meter_repository.update_meter(pres_read, read_date, meter_id)
     
     def fetch_rate_blocks_by_categ(self, categ_id):
-        #butngi lang pd logic ari than base lang sa taas para testing
-        return #aa
+        rateblock_repo = RateBlockRepository()
+        return rateblock_repo.get_rate_block_by_category(categ_id)
     
     def fetch_transactions(self):
         transactions_repository = TransactionRepository()

@@ -1,6 +1,7 @@
 import psycopg2
 from database.Database import DBConnector
 
+
 class RateBlockRepository:
     def __init__(self):
         self.db_connector = DBConnector()
@@ -16,31 +17,51 @@ class RateBlockRepository:
         cursor.close()
         conn.close()
         return rateblock
-    
-    def get_reading_by_id(self, reading_id):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM METER WHERE READING_ID = %s;",
-            (reading_id,)
-        )
-        reading = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return reading
-    
 
-    def create_reading(self, read_date, prev_read, pres_read, meter_id):
+    def insert_rate_block(self, is_minimum, min_con, max_con, rate, categ_id):
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO READING (READING_DATE, READING_PREV, READING_CURRENT, METER_ID)
-            VALUES (%s, %s, %s, %s)
-            RETURNING READING_ID;
-        """, (read_date, prev_read, pres_read, meter_id))
-        new_reading_id = cursor.fetchone()[0]
+            INSERT INTO RATEBLOCK (is_minimum, min_consumption, max_consumption, rate, categ_id)
+            VALUES (%s, %s, %s, %s, %s);
+        """, (is_minimum, min_con, max_con, rate, categ_id))
         conn.commit()
         cursor.close()
         conn.close()
-        return new_reading_id
 
+    def get_rate_block_by_category(self, categ_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT block_id, is_minimum, min_consumption, max_consumption, rate, categ_id
+            FROM RATEBLOCK
+            WHERE categ_id = %s
+            ORDER BY min_consumption;
+        """, (categ_id,))
+        blocks = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return blocks
+
+    def update_rate_block(self, block_id, is_minimum, min_con, max_con, rate):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE RATEBLOCK
+            SET is_minimum = %s,
+                min_consumption = %s,
+                max_consumption = %s,
+                rate = %s
+            WHERE block_id = %s;
+        """, (is_minimum, min_con, max_con, rate, block_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    def delete_rate_block(self, block_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM RATEBLOCK WHERE block_id = %s;", (block_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()

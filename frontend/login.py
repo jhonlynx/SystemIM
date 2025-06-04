@@ -190,7 +190,7 @@ class Ui_loginpage(object):
         
         # Image Label
         self.label = QtWidgets.QLabel()
-        self.label.setPixmap(QtGui.QPixmap("images/logosowbasco.png"))
+        self.label.setPixmap(QtGui.QPixmap("../images/logosowbasco.png"))
         self.label.setScaledContents(True)
         self.label.setMinimumSize(251, 221)
         self.label.setMaximumSize(400, 350)
@@ -369,11 +369,6 @@ class LoginWindow(QMainWindow):
             from workersPanel import WorkersPanel
             self.worker = WorkersPanel()
             self.worker.show()
-            self.close()
-        elif type == 'Cashier':
-            from cashierPanel import CashierPanel
-            self.cashier = CashierPanel()
-            self.cashier.show()
             self.close()
         else:
             QMessageBox.warning(self, "Error", "Invalid username or password")

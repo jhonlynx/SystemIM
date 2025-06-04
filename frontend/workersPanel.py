@@ -21,7 +21,7 @@ class WorkersPanel(QtWidgets.QMainWindow):
         self.setWindowTitle("SOWBASCO - Workers Panel")
         self.setMinimumSize(1200, 800)
         self.showMaximized()
-        self.setWindowIcon(QtGui.QIcon("images/logosowbasco.png"))
+        self.setWindowIcon(QtGui.QIcon("../images/logosowbasco.png"))
         
         # Main widget and layout setup
         self.central_widget = QtWidgets.QWidget()
@@ -178,7 +178,7 @@ class WorkersPanel(QtWidgets.QMainWindow):
         
         # Logo image
         logo_image = QtWidgets.QLabel()
-        logo_pixmap = QtGui.QPixmap("images/logosowbasco.png")
+        logo_pixmap = QtGui.QPixmap("../images/logosowbasco.png")
         scaled_pixmap = logo_pixmap.scaled(50, 50, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         logo_image.setPixmap(scaled_pixmap)
         logo_image.setStyleSheet("padding: 10px;")
@@ -199,12 +199,12 @@ class WorkersPanel(QtWidgets.QMainWindow):
         # Navigation buttons
         self.nav_buttons = []
         for text, icon_path in [
-            ("Customers", "images/clients.png"),
-            ("Categories", "images/category.png"),
-            ("Address", "images/address.png"),
-            ("Meters", "images/meters.png"),  # Added Meters button
-            ("Billing", "images/bill.png"),
-            ("Transactions", "images/transaction.png")
+            ("Customers", "../images/clients.png"),
+            ("Categories", "../images/category.png"),
+            ("Address", "../images/address.png"),
+            ("Meters", "../images/meters.png"),  # Added Meters button
+            ("Billing", "../images/bill.png"),
+            ("Transactions", "../images/transaction.png")
         ]:
             btn = QtWidgets.QPushButton(text)
             btn.setIcon(QtGui.QIcon(icon_path))
@@ -219,7 +219,7 @@ class WorkersPanel(QtWidgets.QMainWindow):
         
         # Logout button
         logout_btn = QtWidgets.QPushButton("Logout")
-        logout_btn.setIcon(QtGui.QIcon("images/logout.png"))
+        logout_btn.setIcon(QtGui.QIcon("../images/logout.png"))
         logout_btn.setIconSize(QtCore.QSize(50, 50))
         logout_btn.clicked.connect(self.logout)
         sidebar_layout.addWidget(logout_btn)

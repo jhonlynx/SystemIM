@@ -33,21 +33,21 @@ class AdminDashboardPage(QtWidgets.QWidget):
         stats_grid.setSpacing(20)
         
         # Add stat cards
-        workers_card = self.create_stat_card("Total Workers", "25", "images/list.png")
+        workers_card = self.create_stat_card("Total Workers", "25", "../images/list.png")
         stats_grid.addWidget(workers_card, 0, 0)
         
-        customers_card = self.create_stat_card("Total Customers", "150", "images/clients.png")
+        customers_card = self.create_stat_card("Total Customers", "150", "../images/clients.png")
         stats_grid.addWidget(customers_card, 0, 1)
         
-        active_card = self.create_stat_card("Active", "120", "images/active.png")
+        active_card = self.create_stat_card("Active", "120", "../images/active.png")
         stats_grid.addWidget(active_card, 0, 2)
         
-        inactive_card = self.create_stat_card("Inactive", "30", "images/not-active.png")
+        inactive_card = self.create_stat_card("Inactive", "30", "../images/not-active.png")
         stats_grid.addWidget(inactive_card, 0, 3)
         
         total_billed = sum(float(trans_amount.replace('₱', '')) 
                           for _, _, trans_amount, _, _, _ in self.sample_data)
-        billed_card = self.create_stat_card("Total Billed Amount", f"₱{total_billed:,.2f}", "images/bill.png")
+        billed_card = self.create_stat_card("Total Billed Amount", f"₱{total_billed:,.2f}", "../images/bill.png")
         stats_grid.addWidget(billed_card, 0, 4)
         
         content_layout.addLayout(stats_grid)
