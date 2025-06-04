@@ -69,7 +69,7 @@ class CategoryPage(QtWidgets.QWidget):
         search_add_layout.addLayout(search_container)
 
         # Add button with icon
-        add_btn = QtWidgets.QPushButton("ADD ADDRESS", icon=QtGui.QIcon("images/add.png"))
+        add_btn = QtWidgets.QPushButton("ADD ADDRESS", icon=QtGui.QIcon("../images/add.png"))
         add_btn.setStyleSheet("""
             QPushButton {
                 background-color: rgb(229, 115, 115);
@@ -186,7 +186,7 @@ class CategoryPage(QtWidgets.QWidget):
             actions_layout.setSpacing(15)
             actions_layout.setAlignment(QtCore.Qt.AlignCenter)
 
-            edit_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("images/edit.png"))
+            edit_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("../images/edit.png"))
             edit_btn.setIconSize(QtCore.QSize(24, 24))
             edit_btn.setStyleSheet("""
                 QPushButton {
@@ -201,7 +201,7 @@ class CategoryPage(QtWidgets.QWidget):
             edit_btn.clicked.connect(lambda _, row=row: self.show_edit_category_page(row))
             actions_layout.addWidget(edit_btn)
 
-            view_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("images/view.png"))
+            view_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("../images/view.png"))
             view_btn.setIconSize(QtCore.QSize(24, 24))
             view_btn.setToolTip("View Rate Blocks")
             view_btn.setStyleSheet("""

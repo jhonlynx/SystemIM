@@ -12,7 +12,7 @@ from backend.adminBack import adminPageBack
 
 class AdminCustomersPage(QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super().__init__()
+        super().__init__(parent)
         self.parent = parent
         self.all_customers_data = []  # Store all customer data
         self.current_page = 1

@@ -6,6 +6,12 @@ import math
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PyQt5 import QtCore, QtGui, QtWidgets
 from backend.adminBack import adminPageBack
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QComboBox,
+    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QDialog
+)
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt
 
 
 class MetersPage(QtWidgets.QWidget):
@@ -43,7 +49,7 @@ class MetersPage(QtWidgets.QWidget):
 
         # Filter Combo Box
         self.filter_combo = QtWidgets.QComboBox()
-        self.filter_combo.addItems(["Meter ID", "Serial Number", "Meter Code", "Last Read"])
+        self.filter_combo.addItems(["Meter Code", "Client Name", "Serial Number", "Last Read"])
         self.filter_combo.setStyleSheet("""
             QComboBox {
                 padding: 8px;
@@ -101,10 +107,11 @@ class MetersPage(QtWidgets.QWidget):
                 background-color: transparent;
             }
         """)
-        self.meter_table.setColumnCount(4)
+        self.meter_table.setColumnCount(5)
         self.meter_table.setHorizontalHeaderLabels([
-            "METER ID", "SERIAL NUMBER", "METER CODE", "LAST READ"
+            "METER CODE", "CLIENT NAME", "SERIAL NUMBER", "LAST READ", "ACTION"
         ])
+
         self.meter_table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.meter_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.meter_table.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
@@ -191,21 +198,22 @@ class MetersPage(QtWidgets.QWidget):
 
     def is_row_filtered(self, row_index):
         if not hasattr(self, 'search_input') or self.search_input is None:
-            return False
+            return False  # No search input, show all rows
 
         if row_index >= len(self.all_meters_data):
-            return True
+            return True  # Invalid row index
 
         meter = self.all_meters_data[row_index]
-        search_text = self.search_input.text().lower()
-        if not search_text:
-            return False
+        search_text = self.search_input.text().strip().lower()
 
-        # Map combo box selection to column index
+        if not search_text:
+            return False  # No search text, show all rows
+
+        # Map combo box selection to correct column index
         field_mapping = {
-            "Meter ID": 0,
-            "Serial Number": 1,
-            "Meter Code": 2,
+            "Meter Code": 0,
+            "Client Name": 1,   # now contains full name
+            "Serial Number": 2,
             "Last Read": 3
         }
 
@@ -213,9 +221,14 @@ class MetersPage(QtWidgets.QWidget):
         field_index = field_mapping.get(filter_by, -1)
 
         if field_index == -1:
-            return True  # Invalid field
+            return True  # Invalid field selected
 
-        field_value = str(meter[field_index]).lower()
+        try:
+            field_value = str(meter[field_index]).lower()
+        except IndexError:
+            print("Invalid meter data structure:", meter)
+            return True  # Skip invalid rows
+
         return search_text not in field_value
 
     def go_to_first_page(self):
@@ -245,34 +258,123 @@ class MetersPage(QtWidgets.QWidget):
 
     def populate_table(self, data):
         self.meter_table.setRowCount(0)
-        visible_row_counter = 0
-        rows_to_show = []
+        start_index = (self.current_page - 1) * self.records_per_page
+        end_index = start_index + self.records_per_page
 
-        for row_index, meter in enumerate(data):
-            if not self.is_row_filtered(row_index):
-                visible_row_counter += 1
-                start_index = (self.current_page - 1) * self.records_per_page + 1
-                end_index = self.current_page * self.records_per_page
-                if start_index <= visible_row_counter <= end_index:
-                    rows_to_show.append(meter)
+        # Filter rows based on search input
+        filtered_data = [meter for i, meter in enumerate(data) if not self.is_row_filtered(i)]
 
-        self.meter_table.setRowCount(len(rows_to_show))
+        # Paginate filtered data
+        paginated_data = filtered_data[start_index:end_index]
 
-        for table_row, meter in enumerate(rows_to_show):
+        for table_row, meter in enumerate(paginated_data):
             try:
-                meter_id, serial_number, meter_code, last_read = meter
+                meter_code, full_name, serial_number, last_read, meter_id = meter
             except ValueError as e:
                 print("Error unpacking meter data:", meter, e)
                 continue
 
-            self.meter_table.setItem(table_row, 0, QtWidgets.QTableWidgetItem(str(meter_id)))
-            self.meter_table.setItem(table_row, 1, QtWidgets.QTableWidgetItem(serial_number))
-            self.meter_table.setItem(table_row, 2, QtWidgets.QTableWidgetItem(meter_code))
+            self.meter_table.insertRow(table_row)
+
+            self.meter_table.setItem(table_row, 0, QtWidgets.QTableWidgetItem(str(meter_code)))
+            self.meter_table.setItem(table_row, 1, QtWidgets.QTableWidgetItem(full_name))
+            self.meter_table.setItem(table_row, 2, QtWidgets.QTableWidgetItem(str(serial_number)))
             self.meter_table.setItem(table_row, 3, QtWidgets.QTableWidgetItem(str(last_read)))
+
+            # Create a centered QPushButton with an icon
+            view_button = QtWidgets.QPushButton()
+            view_button.setIcon(QtGui.QIcon("../images/view.png"))
+            view_button.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    padding: 5px;
+                }
+            """)
+            view_button.clicked.connect(lambda _, mid=meter_id: self.view_meter_details(mid))
+
+            # Center the button in the cell
+            self.meter_table.setCellWidget(table_row, 4, view_button)
 
     def filter_table(self):
         self.current_page = 1
         self.update_pagination()
+
+    def view_meter_details(self, meter_id):
+
+        # Fetch detailed meter information
+        meter_data = next((m for m in self.all_meters_data if m[4] == meter_id), None)
+
+        if not meter_data:
+            QtWidgets.QMessageBox.warning(self, "Error", "Meter data not found.")
+            return
+
+        # Get readings for this meter only
+        IadminPageBack = adminPageBack()
+        readings = IadminPageBack.fetch_readings_by_meter_id(meter_id)
+
+        # Create dialog window
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Meter Readings - ID: {meter_id}")
+        dialog.resize(900, 600)  # Set initial dialog size
+
+        layout = QVBoxLayout(dialog)
+
+        # Info Label
+        info_label = QLabel(f"<b>Meter ID:</b> {meter_id}")
+        info_label.setStyleSheet("font-size: 16px; padding-bottom: 10px;")
+        layout.addWidget(info_label)
+
+        if not readings:
+            # Show message if no readings
+            no_data_label = QLabel("No reading history found for this meter.")
+            no_data_label.setStyleSheet("font-size: 14px; color: #555;")
+            no_data_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(no_data_label)
+        else:
+            # Table setup
+            table = QTableWidget()
+            table.setColumnCount(5)
+            table.setHorizontalHeaderLabels(["Reading ID", "Date", "Previous Reading", "Current Reading", "Meter ID"])
+            table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+            table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
+            table.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
+            table.verticalHeader().setVisible(False)
+
+            # Populate table
+            table.setRowCount(len(readings))
+            for row, reading in enumerate(readings):
+                try:
+                    reading_id, reading_date, prev_reading, current_reading, _ = reading
+                    table.setItem(row, 0, QTableWidgetItem(str(reading_id)))
+                    table.setItem(row, 1, QTableWidgetItem(str(reading_date)))
+                    table.setItem(row, 2, QTableWidgetItem(str(prev_reading)))
+                    table.setItem(row, 3, QTableWidgetItem(str(current_reading)))
+                    table.setItem(row, 4, QTableWidgetItem(str(meter_id)))
+                except Exception as e:
+                    print("Error unpacking reading:", reading, e)
+                    continue
+
+            layout.addWidget(table)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #81C784;
+                color: white;
+                padding: 8px;
+                border-radius: 4px;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background-color: #66BB6A;
+            }
+        """)
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn, alignment=Qt.AlignRight)
+
+        # Show dialog
+        dialog.exec_() 
 
 
 if __name__ == "__main__":

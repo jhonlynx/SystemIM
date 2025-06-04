@@ -77,3 +77,43 @@ class TransactionRepository:
         cursor.close()
         conn.close()
         return new_id
+
+    def get_all_transaction_logs(self):
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                           SELECT log_id, transaction_id, action, timestamp, user_name, old_status, new_status
+                           FROM transaction_logs
+                           ORDER BY timestamp DESC
+                           """)
+            logs = cursor.fetchall()
+            return logs
+        except Exception as e:
+            print(f"Error fetching transaction logs: {e}")
+            return []
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()
+
+    def get_all_system_logs(self):
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                           SELECT log_id, message, timestamp, user_name
+                           FROM system_logs
+                           ORDER BY timestamp DESC
+                           """)
+            logs = cursor.fetchall()
+            return logs
+        except Exception as e:
+            print(f"Error fetching system logs: {e}")
+            return []
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()

@@ -3,9 +3,11 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import sys
 import os
+from PyQt5.QtWidgets import QMainWindow
 
 # Add the project root directory to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pages.admin_dashboard_page import AdminDashboardPage
@@ -14,8 +16,10 @@ from pages.admin_customers_page import AdminCustomersPage
 from pages.transactions_page import TransactionsPage
 from pages.category_page import CategoryPage
 from pages.address_page import AddressPage
+from pages.logs_history_page import LogsAndHistoryPage
 
-class AdminPanel(QtWidgets.QMainWindow):
+
+class AdminPanel(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SOWBASCO - Admin Panel")
@@ -45,7 +49,8 @@ class AdminPanel(QtWidgets.QMainWindow):
             "Categories":2,
             "Address": 3,
             "Meters": 4,
-            "Transactions": 5
+            "Transactions": 5,
+            "Logs": 6
         }
         
         # Create placeholder pages for all sections
@@ -89,16 +94,18 @@ class AdminPanel(QtWidgets.QMainWindow):
         if page_name == "Dashboard":
             page = AdminDashboardPage(self)
         elif page_name == "Customers":
-            page = AdminCustomersPage(self)   
+            page = AdminCustomersPage(self)
         elif page_name == "Categories":
             page = CategoryPage(self)
         elif page_name == "Address":
             page = AddressPage(self)
         elif page_name == "Meters":  # This is now using MetersPage instead
-            page = MetersPage(self)    
+            page = MetersPage(self)
         elif page_name == "Transactions":
             page = TransactionsPage(self)
-        
+        elif page_name == "Logs":
+            page = LogsAndHistoryPage(self)
+
         if page:
             # Replace the placeholder with the actual page
             self.stacked_widget.removeWidget(placeholder)
@@ -172,7 +179,8 @@ class AdminPanel(QtWidgets.QMainWindow):
             ("Categories", "../images/category.png"),
             ("Address", "../images/address.png"),
             ("Meters", "../images/meters.png"),
-            ("Transactions", "../images/transaction.png")
+            ("Transactions", "../images/transaction.png"),
+            ("Logs", "../images/logs.png")
         ]:
             btn = QtWidgets.QPushButton(text)
             btn.setIcon(QtGui.QIcon(icon_path))

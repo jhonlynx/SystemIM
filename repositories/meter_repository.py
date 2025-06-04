@@ -14,19 +14,19 @@ class MeterRepository:
             cursor = conn.cursor()
 
             cursor.execute("""
-                SELECT m.METER_ID, m.SERIAL_NUMBER, m.METER_CODE, m.METER_LAST_READING_DATE
+                SELECT m.METER_ID, m.SERIAL_NUMBER, m.METER_CODE, 
+                    m.METER_LAST_READING_DATE, c.CLIENT_NAME, c.CLIENT_LNAME
                 FROM METER m
+                LEFT JOIN CLIENT c ON c.METER_ID = m.METER_ID
                 ORDER BY m.METER_ID ASC
             """)
 
             meters = cursor.fetchall()
 
-            # Format results into tuples with named fields for clarity
             formatted_meters = [
-                (
-                    meter_id, serial_number, meter_code, last_read
-                )
-                for (meter_id, serial_number, meter_code, last_read) in meters
+                (meter_code, f"{client_name} {client_lname}" if client_name and client_lname else "N/A",
+                serial_number, last_read, meter_id)
+                for (meter_id, serial_number, meter_code, last_read, client_name, client_lname) in meters
             ]
 
             return formatted_meters
@@ -40,18 +40,6 @@ class MeterRepository:
                 cursor.close()
             if 'conn' in locals():
                 conn.close()
-    
-    def get_meter_by_id(self, meter_id):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM METER WHERE METER_ID = %s;",
-            (meter_id,)
-        )
-        meter = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return meter
     
 
     def create_meter(self, meter_last_reading, serial_number):
@@ -97,3 +85,12 @@ class MeterRepository:
         finally:
             cursor.close()
             conn.close()
+
+    def get_readings_by_meter_id(self, meter_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM READING WHERE METER_ID = %s ORDER BY READING_DATE DESC", (meter_id,))
+        readings = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return readings        
