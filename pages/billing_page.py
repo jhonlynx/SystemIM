@@ -308,8 +308,6 @@ class EmployeeBillingPage(QtWidgets.QWidget):
         self.preview_window = self.BillPreview(merged_pdf_path)
         self.preview_window.show()
 
-
-
     def preview_generated_pdf(self, pdf_path, batch_mode=True):
         # Display the PDF preview window using BillPreview class
         self.preview_window = self.BillPreview(pdf_path, batch_mode=batch_mode)
