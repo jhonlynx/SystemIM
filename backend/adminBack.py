@@ -105,7 +105,7 @@ class adminPageBack:
     
     def update_meter_latest_reading(self, pres_read, read_date, meter_id):
         meter_repository = MeterRepository()
-        return meter_repository.update_meter(pres_read, read_date, meter_id)
+        return meter_repository.update_meter_latest_reading(pres_read, read_date, meter_id)
     
     def fetch_rate_blocks_by_categ(self, categ_id):
         rateblock_repo = RateBlockRepository()
@@ -134,3 +134,11 @@ class adminPageBack:
     def get_meter_by_id(self, meter_id):
         meter_repository = MeterRepository()
         return meter_repository.get_meter_by_id(meter_id)
+
+    def get_bill_data_by_code(self, billing_id):
+        billing_repository = BillingRepository()
+        return billing_repository.get_bill_data(billing_id)
+
+    def get_billing_id(self, billing_code):
+        billing_repository = BillingRepository()
+        return billing_repository.get_billing_id(billing_code)

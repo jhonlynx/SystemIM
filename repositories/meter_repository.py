@@ -73,6 +73,19 @@ class MeterRepository:
         cursor.close()
         conn.close()
         return new_id
+
+    def update_meter_latest_reading(self, pres_read, read_date, meter_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+                       UPDATE METER
+                       SET METER_LAST_READING      = %s,
+                           METER_LAST_READING_DATE = %s
+                       WHERE METER_ID = %s
+                       """, (pres_read, read_date, meter_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
     
     def update_meter(self, meter_id, serial_number, meter_code, last_read):
         try:

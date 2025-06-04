@@ -1,4 +1,7 @@
 import warnings
+
+from PyQt5.QtWidgets import QVBoxLayout, QWidget
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import sys
@@ -7,6 +10,12 @@ import math  # Add this import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
+from docx import Document
+from docx2pdf import convert
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton
+import fitz  # PyMuPDF
+from PyQt5.QtWidgets import QLabel, QScrollArea
+from PyQt5.QtGui import QPixmap, QImage
 
 from backend.adminBack import adminPageBack
 
@@ -68,34 +77,123 @@ class EmployeeBillingPage(QtWidgets.QWidget):
         action_layout.addWidget(print_btn)
         self.billing_table.setCellWidget(row, 8, action_widget)
 
-    def print_bill(self, billing_data):
-        """Print bill with preview"""
-        try:
-            # Create printer with better settings
-            printer = QPrinter(QPrinter.HighResolution)
-            printer.setPageSize(QPrinter.A4)
-            printer.setOrientation(QPrinter.Portrait)
-            printer.setPageMargins(10, 10, 10, 10, QPrinter.Millimeter)  # Set margins
-            
-            # Create print preview dialog
-            preview_dialog = QPrintPreviewDialog(printer, self)
-            preview_dialog.setWindowTitle("Print Preview - Bill")
-            preview_dialog.resize(800, 600)
-            
-            # Connect paint request to print function
-            preview_dialog.paintRequested.connect(lambda p: self.paint_bill(p, billing_data))
-            
-            # Show preview dialog
-            result = preview_dialog.exec_()
-            
-            if result == QtWidgets.QDialog.Accepted:
-                print("Print job completed or sent to printer")
-            
-        except Exception as e:
-            error_msg = f"Failed to print bill: {str(e)}"
-            print(error_msg)  # For debugging
-            QtWidgets.QMessageBox.warning(self, "Print Error", error_msg)
+    def fill_word_template(self, data, template_path="bill_template.docx", output_path="generated_bill.docx"):
+        doc = Document(template_path)
 
+        # Add checkmarks only for the correct category
+        for i in range(1, 5):
+            data[f"check{i}"] = "✓" if data.get("category_code") == i else ""
+
+        # Replace in paragraphs
+        for paragraph in doc.paragraphs:
+            for key, value in data.items():
+                placeholder = f"{{{{{key}}}}}"
+                if placeholder in paragraph.text:
+                    paragraph.text = paragraph.text.replace(placeholder, str(value))
+
+        # Replace in tables
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for key, value in data.items():
+                        placeholder = f"{{{{{key}}}}}"
+                        if placeholder in cell.text:
+                            cell.text = cell.text.replace(placeholder, str(value))
+
+        doc.save(output_path)
+        print(f"✅ Word file generated at: {output_path}")
+
+    def convert_to_pdf(self,docx_path="generated_bill.docx", pdf_path="generated_bill.pdf"):
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)  # Delete old version
+        convert(docx_path, pdf_path)
+        print(f"✅ PDF saved to {pdf_path}")
+
+    def print_bill(self, billing_data):
+        try:
+            # Extract billing code from row data
+            IadminBack = adminPageBack()
+            billing_id = IadminBack.get_billing_id(billing_data[0])
+
+            # Fetch detailed data from your database using your backend
+            backend = adminPageBack()
+            bill_data = backend.get_bill_data_by_code(billing_id)
+
+            if not bill_data:
+                QtWidgets.QMessageBox.warning(self, "Error", "No billing data found.")
+                return
+
+            # Get base directory (safe version)
+            try:
+                base_dir = os.path.abspath(os.path.join(os.path.dirname(_file_), ".."))
+            except NameError:
+                base_dir = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), ".."))
+
+            # Build file paths
+            template_path = os.path.join(base_dir, "templates", "bill_template.docx")
+            output_path = os.path.join(base_dir, "generated_bill.docx")
+            pdf_path = os.path.join(base_dir, "generated_bill.pdf")
+
+            # Check if template exists
+            if not os.path.exists(template_path):
+                QtWidgets.QMessageBox.warning(self, "Template Missing", f"Template not found at:\n{template_path}")
+                return
+
+            # Fill Word template and convert to PDF
+            self.fill_word_template(bill_data, template_path, output_path)
+            self.convert_to_pdf(output_path, pdf_path)
+
+            # Show preview window
+            self.preview_generated_pdf(pdf_path)
+
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to print bill: {str(e)}")
+
+    def preview_generated_pdf(self, pdf_path):
+        # Display the PDF preview window using BillPreview class
+        self.preview_window = self.BillPreview(pdf_path)
+        self.preview_window.show()
+
+    class BillPreview(QWidget):
+        def __init__(self, pdf_path):
+            super().__init__()
+            self.setWindowTitle("Bill Preview (Image)")
+            self.setMinimumSize(900, 700)
+
+            # Scrollable layout
+            scroll = QScrollArea(self)
+            layout = QVBoxLayout(self)
+            layout.addWidget(scroll)
+
+            container = QWidget()
+            scroll.setWidget(container)
+            scroll.setWidgetResizable(True)
+
+            container_layout = QVBoxLayout(container)
+
+            # Load PDF pages as images using PyMuPDF (fitz)
+            try:
+                doc = fitz.open(pdf_path)
+                for page in doc:
+                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # High-res render
+                    image_format = QImage.Format_RGBA8888 if pix.alpha else QImage.Format_RGB888
+                    qimage = QImage(pix.samples, pix.width, pix.height, pix.stride, image_format)
+                    pixmap = QPixmap.fromImage(qimage)
+                    label = QLabel()
+                    label.setPixmap(pixmap)
+                    container_layout.addWidget(label)
+            except Exception as e:
+                error_label = QLabel(f"Failed to load PDF: {e}")
+                container_layout.addWidget(error_label)
+
+            # Print button
+            print_btn = QPushButton("Print")
+            print_btn.clicked.connect(self.print_pdf)
+            layout.addWidget(print_btn)
+
+        def print_pdf(self):
+            # You can replace this with actual printing logic if needed
+            QtWidgets.QMessageBox.information(self, "Print", "Sending PDF to printer...")
     def paint_bill(self, printer, billing_data):
         """Paint the bill content for printing"""
         painter = QtGui.QPainter(printer)
