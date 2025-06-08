@@ -39,18 +39,23 @@ class CategoryRepository:
         cursor.close()
         conn.close()
         return new_id
-    
+
     def toggle_status_category(self, categ_id, categ_status):
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE CATEGORY
-            SET CATEG_STATUS = %s 
-            WHERE CATEG_ID = %s
-        """, (categ_status, categ_id))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        try:
+            cursor.execute(
+                "UPDATE CATEGORY SET CATEG_STATUS = %s WHERE CATEG_ID = %s",
+                (categ_status, categ_id)
+            )
+            conn.commit()
+            return True  # ✅ Add this line
+        except Exception as e:
+            print("Database Error:", e)
+            return False  # ✅ Optional for error handling
+        finally:
+            cursor.close()
+            conn.close()    
     
     def update_category(self, categ_id, categ_name):
         conn = self.get_connection()

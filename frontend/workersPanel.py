@@ -16,8 +16,9 @@ from pages.transactions_page import TransactionsPage
 from pages.meters_page import MetersPage
 
 class WorkersPanel(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, username=None):
         super().__init__()
+        self.username = username if username else "System"
         self.setWindowTitle("SOWBASCO - Workers Panel")
         self.setMinimumSize(1200, 800)
         self.showMaximized()
@@ -68,15 +69,26 @@ class WorkersPanel(QtWidgets.QMainWindow):
         header_layout = QtWidgets.QHBoxLayout(header_bar)
         header_layout.setContentsMargins(20, 0, 20, 0)
         
-        full_name = QtWidgets.QLabel("SouthWestern Barangays Water Services Cooperative II")
-        full_name.setStyleSheet("""
+        # Add company name on the left
+        company_name = QtWidgets.QLabel("SouthWestern Barangays Water Services Cooperative II")
+        company_name.setStyleSheet("""
             color: rgb(60, 60, 60);
             font-size: 16px;
             font-family: 'Poppins', sans-serif;
             font-weight: 600;
         """)
-        full_name.setAlignment(QtCore.Qt.AlignCenter)
-        header_layout.addWidget(full_name)
+        header_layout.addWidget(company_name)
+        
+        # Add username on the right
+        user_label = QtWidgets.QLabel(f"User: {self.username}")
+        user_label.setStyleSheet("""
+            color: rgb(60, 60, 60);
+            font-size: 14px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+        """)
+        user_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        header_layout.addWidget(user_label)
         
         # Create container for stacked widget and header
         container = QtWidgets.QWidget()

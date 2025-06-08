@@ -6,9 +6,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.adminBack import adminPageBack
 
 class LogsAndHistoryPage(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, username, parent=None):
         super().__init__(parent)
-        self.backend = adminPageBack()
+        self.username = username
+        self.backend = adminPageBack(self.username)
         self.setup_ui()
 
     def setup_ui(self):
@@ -25,6 +26,25 @@ class LogsAndHistoryPage(QtWidgets.QWidget):
         """)
         header_layout.addWidget(title)
         header_layout.addStretch()
+
+        # Refresh Button
+        refresh_btn = QtWidgets.QPushButton("🔄 Refresh")
+        refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #81C784;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-family: 'Roboto', sans-serif;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #66BB6A;
+            }
+        """)
+        refresh_btn.clicked.connect(self.refresh_logs)
+        header_layout.addWidget(refresh_btn)
+
         layout.addLayout(header_layout)
 
         # Table
@@ -65,6 +85,12 @@ class LogsAndHistoryPage(QtWidgets.QWidget):
         for row, data_row in enumerate(data):
             for col, value in enumerate(data_row):
                 table.setItem(row, col, QtWidgets.QTableWidgetItem(str(value)))
+
+    def refresh_logs(self):
+        """Fetch new logs and repopulate the table."""
+        logs_data = self.backend.fetch_system_logs()
+        self.populate_table(self.system_logs_table, logs_data)
+        QtWidgets.QMessageBox.information(self, "Refreshed", "System logs have been refreshed.")
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

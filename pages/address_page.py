@@ -10,9 +10,11 @@ from PyQt5.QtWidgets import QMessageBox
 from backend.adminBack import adminPageBack
 
 class AddressPage(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super().__init__()
+    def __init__(self, username, parent=None):
+        super().__init__(parent)
+        self.username = username
         self.parent = parent
+        self.IadminPageBack = adminPageBack(self.username)
         self.setup_ui()
 
     def create_scrollable_cell(self, row, column, text):
@@ -100,7 +102,7 @@ class AddressPage(QtWidgets.QWidget):
         self.address_table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.address_table.setWordWrap(False)
         
-        IadminPageBack = adminPageBack()
+        IadminPageBack = adminPageBack(self.username)
 
         
         self.populate_table(IadminPageBack.fetch_address())
@@ -182,7 +184,6 @@ class AddressPage(QtWidgets.QWidget):
                     self.address_table.setRowHidden(row, False)  # Show row if name matches
                 else:
                     self.address_table.setRowHidden(row, True)  # Hide row if name doesn't match
-                
 
     def toggle_status(self, row, label):
         table = self.address_table
@@ -191,15 +192,12 @@ class AddressPage(QtWidgets.QWidget):
             toggle_button = container.findChild(QtWidgets.QPushButton)
             if toggle_button:
                 address_id = toggle_button.property("address_id")
-                IadminPageBack = adminPageBack()
-                address_info = IadminPageBack.get_address_by_id(address_id)
-                current_status = address_info[2]  # 'Active' or 'Inactive'
+                address_info = self.IadminPageBack.get_address_by_id(address_id)
+                current_status = address_info[2]
                 next_status = 'Inactive' if current_status == 'Active' else 'Active'
 
-                # Block signals
                 toggle_button.blockSignals(True)
 
-                # Confirm toggle
                 reply = QMessageBox.question(
                     self,
                     "Confirm Status Change",
@@ -208,18 +206,18 @@ class AddressPage(QtWidgets.QWidget):
                 )
 
                 if reply == QMessageBox.Yes:
-                    # Update DB
-                    IadminPageBack.toggle_address_status(address_id, next_status)
+                    self.IadminPageBack.toggle_address_status(address_id, next_status)  # ✅ Uses the right instance
 
-                    # Update label and toggle state
                     label.setText(next_status)
-                    label.setStyleSheet(f"color: {'#4CAF50' if next_status == 'Active' else '#E57373'}; font-weight: bold;")
+                    label.setStyleSheet(
+                        f"color: {'#4CAF50' if next_status == 'Active' else '#E57373'}; font-weight: bold;")
                     toggle_button.setChecked(next_status == "Active")
                 else:
-                    # Keep original state
                     toggle_button.setChecked(current_status == "Active")
 
                 toggle_button.blockSignals(False)
+
+
 
 class ScrollableTextWidget(QtWidgets.QWidget):
     

@@ -15,12 +15,14 @@ from PyQt5.QtCore import Qt
 
 
 class MetersPage(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, user_name, parent=None):
         super().__init__(parent)
+        self.user_name = user_name
         self.all_meters_data = []  # Store all meter data
         self.current_page = 1
         self.records_per_page = 10  # Number of records per page
         self.total_pages = 1
+        self.IadminPageBack = adminPageBack(self.user_name)
         self.setup_ui()
         self.showMaximized()
 
@@ -121,8 +123,7 @@ class MetersPage(QtWidgets.QWidget):
         layout.addWidget(self.meter_table)
 
         # Fetch all meters data
-        IadminPageBack = adminPageBack()
-        self.all_meters_data = IadminPageBack.fetch_meters()
+        self.all_meters_data = self.IadminPageBack.fetch_meters()
         self.populate_table(self.all_meters_data)
 
         # Pagination Controls
@@ -281,26 +282,31 @@ class MetersPage(QtWidgets.QWidget):
             self.meter_table.setItem(table_row, 2, QtWidgets.QTableWidgetItem(str(serial_number)))
             self.meter_table.setItem(table_row, 3, QtWidgets.QTableWidgetItem(str(last_read)))
 
-            # Create a centered QPushButton with an icon
-            view_button = QtWidgets.QPushButton()
-            view_button.setIcon(QtGui.QIcon("../images/view.png"))
-            view_button.setStyleSheet("""
-                QPushButton {
-                    background-color: transparent;
-                    padding: 5px;
-                }
-            """)
-            view_button.clicked.connect(lambda _, mid=meter_id: self.view_meter_details(mid))
+            view_btn = QPushButton()
+            view_btn.setIcon(QtGui.QIcon("../images/view.png"))
+            view_btn.setToolTip("View Meter")
+            view_btn.clicked.connect(lambda _, mid=meter_id: self.view_meter_details(mid))
+            view_btn.setStyleSheet("background-color: transparent; padding: 5px;")
 
-            # Center the button in the cell
-            self.meter_table.setCellWidget(table_row, 4, view_button)
+            replace_btn = QPushButton()
+            replace_btn.setIcon(QtGui.QIcon("../images/replace.png"))
+            replace_btn.setToolTip("Replace Meter")
+            replace_btn.clicked.connect(lambda _, mid=meter_id: self.replace_meter_dialog(mid))
+            replace_btn.setStyleSheet("background-color: transparent; padding: 5px;")
+
+            btn_layout = QHBoxLayout()
+            btn_widget = QWidget()
+            btn_layout.setContentsMargins(0, 0, 0, 0)
+            btn_layout.addWidget(view_btn)
+            btn_layout.addWidget(replace_btn)
+            btn_widget.setLayout(btn_layout)
+            self.meter_table.setCellWidget(table_row, 4, btn_widget)
 
     def filter_table(self):
         self.current_page = 1
         self.update_pagination()
 
     def view_meter_details(self, meter_id):
-
         # Fetch detailed meter information
         meter_data = next((m for m in self.all_meters_data if m[4] == meter_id), None)
 
@@ -308,19 +314,21 @@ class MetersPage(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", "Meter data not found.")
             return
 
+        # Extract Meter Code from meter_data (index 0 is meter_code in formatted_meters)
+        meter_code = meter_data[0]  # ← Get Meter Code instead of Meter ID
+
         # Get readings for this meter only
-        IadminPageBack = adminPageBack()
-        readings = IadminPageBack.fetch_readings_by_meter_id(meter_id)
+        readings = self.IadminPageBack.fetch_readings_by_meter_id(meter_id)
 
         # Create dialog window
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Meter Readings - ID: {meter_id}")
+        dialog.setWindowTitle(f"Meter Readings - {meter_code}")
         dialog.resize(900, 600)  # Set initial dialog size
 
         layout = QVBoxLayout(dialog)
 
-        # Info Label
-        info_label = QLabel(f"<b>Meter ID:</b> {meter_id}")
+        # Info Label - Display Meter Code instead of Meter ID
+        info_label = QLabel(f"<b>Meter Code:</b> {meter_code}")
         info_label.setStyleSheet("font-size: 16px; padding-bottom: 10px;")
         layout.addWidget(info_label)
 
@@ -331,10 +339,10 @@ class MetersPage(QtWidgets.QWidget):
             no_data_label.setAlignment(Qt.AlignCenter)
             layout.addWidget(no_data_label)
         else:
-            # Table setup
+            # Table setup without Reading ID or Meter ID
             table = QTableWidget()
-            table.setColumnCount(5)
-            table.setHorizontalHeaderLabels(["Reading ID", "Date", "Previous Reading", "Current Reading", "Meter ID"])
+            table.setColumnCount(3)  # Date, Previous Reading, Current Reading
+            table.setHorizontalHeaderLabels(["Date", "Previous Reading", "Current Reading"])
             table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
             table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
             table.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
@@ -345,11 +353,9 @@ class MetersPage(QtWidgets.QWidget):
             for row, reading in enumerate(readings):
                 try:
                     reading_id, reading_date, prev_reading, current_reading, _ = reading
-                    table.setItem(row, 0, QTableWidgetItem(str(reading_id)))
-                    table.setItem(row, 1, QTableWidgetItem(str(reading_date)))
-                    table.setItem(row, 2, QTableWidgetItem(str(prev_reading)))
-                    table.setItem(row, 3, QTableWidgetItem(str(current_reading)))
-                    table.setItem(row, 4, QTableWidgetItem(str(meter_id)))
+                    table.setItem(row, 0, QTableWidgetItem(str(reading_date)))
+                    table.setItem(row, 1, QTableWidgetItem(str(prev_reading)))
+                    table.setItem(row, 2, QTableWidgetItem(str(current_reading)))
                 except Exception as e:
                     print("Error unpacking reading:", reading, e)
                     continue
@@ -374,7 +380,63 @@ class MetersPage(QtWidgets.QWidget):
         layout.addWidget(close_btn, alignment=Qt.AlignRight)
 
         # Show dialog
-        dialog.exec_() 
+        dialog.exec_()
+
+    def replace_meter_dialog(self, old_meter_id):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Replace Meter")
+        layout = QVBoxLayout(dialog)
+
+        serial_input = QLineEdit()
+        serial_input.setPlaceholderText("Enter new serial number")
+
+        reading_input = QLineEdit()
+        reading_input.setPlaceholderText("Enter initial reading (e.g., 12345)")
+
+        submit_btn = QPushButton("Confirm Replacement")
+        submit_btn.clicked.connect(lambda: self.confirm_meter_replacement(
+            old_meter_id,
+            serial_input.text(),
+            reading_input.text(),
+            dialog
+        ))
+
+        layout.addWidget(QLabel("New Serial Number:"))
+        layout.addWidget(serial_input)
+        layout.addWidget(QLabel("Initial Reading:"))
+        layout.addWidget(reading_input)
+        layout.addWidget(submit_btn)
+
+        dialog.exec_()
+
+    def confirm_meter_replacement(self, old_meter_id, new_serial, initial_reading, dialog):
+        if not new_serial:
+            QtWidgets.QMessageBox.warning(self, "Error", "Serial number is required.")
+            return
+
+        if not initial_reading.isdigit():
+            QtWidgets.QMessageBox.warning(self, "Error", "Initial reading must be a valid number.")
+            return
+
+        # Check if serial already exists
+        existing_meters = self.IadminPageBack.fetch_meters()
+        for meter in existing_meters:
+            existing_serial = meter[2]  # Adjust index if needed
+            if existing_serial == new_serial:
+                QtWidgets.QMessageBox.warning(self, "Duplicate Serial", "This serial number is already registered.")
+                return
+
+        # Proceed with replacement
+        success = self.IadminPageBack.replace_meter(old_meter_id, new_serial, int(initial_reading))
+        if success:
+            QtWidgets.QMessageBox.information(self, "Success", "Meter replaced successfully.")
+            dialog.accept()
+            self.all_meters_data = self.IadminPageBack.fetch_meters()
+            self.update_pagination()
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error", "Failed to replace meter.")
+
+    
 
 
 if __name__ == "__main__":

@@ -20,13 +20,13 @@ from pages.logs_history_page import LogsAndHistoryPage
 
 
 class AdminPanel(QMainWindow):
-    def __init__(self):
+    def __init__(self, username=None):
         super().__init__()
+        self.username = username if username else "System"
         self.setWindowTitle("SOWBASCO - Admin Panel")
         self.setMinimumSize(1200, 800)
         self.showMaximized()
         self.setWindowIcon(QtGui.QIcon("../images/logosowbasco.png"))
-        
         
         # Main widget and layout setup
         self.central_widget = QtWidgets.QWidget()
@@ -92,19 +92,19 @@ class AdminPanel(QMainWindow):
         # Create the page
         page = None
         if page_name == "Dashboard":
-            page = AdminDashboardPage(self)
+            page = AdminDashboardPage(self.username)
         elif page_name == "Customers":
-            page = AdminCustomersPage(self)
+            page = AdminCustomersPage(self.username)
         elif page_name == "Categories":
-            page = CategoryPage(self)
+            page = CategoryPage(self.username)
         elif page_name == "Address":
-            page = AddressPage(self)
+            page = AddressPage(self.username)
         elif page_name == "Meters":  # This is now using MetersPage instead
-            page = MetersPage(self)
+            page = MetersPage(self.username)
         elif page_name == "Transactions":
-            page = TransactionsPage(self)
+            page = TransactionsPage(self.username)
         elif page_name == "Logs":
-            page = LogsAndHistoryPage(self)
+            page = LogsAndHistoryPage(self.username)
 
         if page:
             # Replace the placeholder with the actual page

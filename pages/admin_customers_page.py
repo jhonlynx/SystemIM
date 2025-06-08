@@ -24,9 +24,11 @@ def image_to_base64(path):
 
 
 class AdminCustomersPage(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, username, parent=None):
         super().__init__()
         self.parent = parent
+        self.username = username
+        self.IadminPageBack = adminPageBack(self.username)
         self.all_customers_data = []  # Store all customer data
         self.current_page = 1
         self.records_per_page = 10  # Number of records per page
@@ -465,68 +467,49 @@ class AdminCustomersPage(QtWidgets.QWidget):
 
     def toggle_status(self, row, label):
         table = self.customers_table
-        container = table.cellWidget(row, 8)
+        container = table.cellWidget(row, 9)  # Status column index
         if container:
             toggle_button = container.findChild(QtWidgets.QPushButton)
             if toggle_button:
-                # Store the current status before the button toggles
-                current_status = toggle_button.isChecked()
-                next_status = not current_status
-                next_status_label = "Active" if next_status else "Inactive"
+                # Get client_id from customer data
+                visible_index = 0
+                selected_customer = None
+                for idx, customer in enumerate(self.all_customers_data):
+                    if not self.is_row_filtered(idx):
+                        if visible_index == row:
+                            selected_customer = customer
+                            break
+                        visible_index += 1
 
-                # Block the toggle signal to prevent automatic state change
+                if not selected_customer:
+                    QtWidgets.QMessageBox.warning(self, "Error", "Customer not found.")
+                    return
+
+                client_id = selected_customer[0]
+                current_status = selected_customer[10].capitalize()  # Ensure case for enum
+                next_status = 'Inactive' if current_status == 'Active' else 'Active'
+
                 toggle_button.blockSignals(True)
 
-                # Ask for confirmation
-                reply = QtWidgets.QMessageBox.question(
+                reply = QMessageBox.question(
                     self,
                     "Confirm Status Change",
-                    f"Are you sure you want to change the status to {next_status_label}?",
-                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                    f"Are you sure you want to change the status to {next_status}?",
+                    QMessageBox.Yes | QMessageBox.No
                 )
 
-                if reply == QtWidgets.QMessageBox.Yes:
-                    try:
-                        # Get client_id from the original data
-                        visible_index = 0
-                        client_index = -1
-                        for row_index, customer in enumerate(self.all_customers_data):
-                            if not self.is_row_filtered(row_index):
-                                if visible_index == row:
-                                    client_index = row_index
-                                    break
-                                visible_index += 1
-
-                        if client_index == -1:
-                            raise Exception("Customer not found")
-
-                        customer = self.all_customers_data[client_index]
-                        client_id = customer[0]  # assuming client_id is first item in tuple
-
-                        # Update status in the database
-                        admin_back = adminPageBack()
-                        admin_back.update_client_status(client_id, next_status_label)
-
-                        # Update UI
-                        toggle_button.setChecked(next_status)
-                        if next_status:
-                            label.setText("Active")
-                            label.setStyleSheet("color: #4CAF50; font-weight: bold;")
-                        else:
-                            label.setText("Inactive")
-                            label.setStyleSheet("color: #E57373; font-weight: bold;")
-
-                        QtWidgets.QMessageBox.information(self, "Success", "Status updated successfully.")
-
-                    except Exception as e:
-                        QtWidgets.QMessageBox.critical(self, "Error", f"Failed to update status: {str(e)}")
-                        toggle_button.setChecked(current_status)  # Revert
+                if reply == QMessageBox.Yes:
+                    self.IadminPageBack.update_client_status(client_id, next_status)
+                    label.setText(next_status)
+                    label.setStyleSheet(
+                        f"color: {'#4CAF50' if next_status == 'Active' else '#E57373'}; font-weight: bold;")
+                    toggle_button.setChecked(next_status == "Active")
                 else:
-                    # Revert the button's checked state
-                    toggle_button.setChecked(current_status)
+                    toggle_button.setChecked(current_status == "Active")
 
-                # Re-enable signals
                 toggle_button.blockSignals(False)
+
+
 
     def show_add_customer_page(self):
         add_dialog = QtWidgets.QDialog(self)
@@ -595,10 +578,9 @@ class AdminCustomersPage(QtWidgets.QWidget):
             widget.setStyleSheet(input_style)
 
         # Fetch backend data
-        IadminPageBack = adminPageBack()
-        for category_id, category_name, category_status, category_date in IadminPageBack.fetch_categories():
+        for category_id, category_name, category_status, category_date in self.IadminPageBack.fetch_categories():
             fields["Category"].addItem(category_name, category_id)
-        for address_id, address_name, address_status, address_date in IadminPageBack.fetch_address():
+        for address_id, address_name, address_status, address_date in self.IadminPageBack.fetch_address():
             fields["Address"].addItem(address_name, address_id)
 
         # Layout inputs in 2 columns
@@ -655,9 +637,11 @@ class AdminCustomersPage(QtWidgets.QWidget):
             category_id = category_combo.currentData()
             address_id = address_combo.currentData()
 
-            input_values = {label: widget.text().strip() if isinstance(widget,
-                                                                       QtWidgets.QLineEdit) else widget.currentText().strip()
-                            for label, widget in fields.items()}
+            input_values = {
+                label: widget.text().strip() if isinstance(widget, QtWidgets.QLineEdit)
+                else widget.currentText().strip()
+                for label, widget in fields.items()
+            }
 
             missing_fields = [label for label in fields if label != "Middle Name" and not input_values[label]]
             if missing_fields:
@@ -684,8 +668,14 @@ class AdminCustomersPage(QtWidgets.QWidget):
                 QtWidgets.QMessageBox.warning(self, "Error", "First Reading must be a number.")
                 return
 
-            meter_id = IadminPageBack.add_meter(meter_reading, input_values["Serial Number"])
-            new_client_id = IadminPageBack.add_client(
+            serial_number = input_values["Serial Number"]
+            # ✅ Check if the serial number already exists
+            if self.IadminPageBack.serial_exists(serial_number):
+                QtWidgets.QMessageBox.warning(self, "Duplicate Serial", "This serial number is already registered.")
+                return
+
+            meter_id = self.IadminPageBack.add_meter(meter_reading, serial_number)
+            new_client_id = self.IadminPageBack.add_client(
                 client_name=input_values["First Name"],
                 client_lname=input_values["Last Name"],
                 client_contact_num=input_values["Contact Number"],
@@ -700,8 +690,7 @@ class AdminCustomersPage(QtWidgets.QWidget):
             QtWidgets.QMessageBox.information(self, "Success", "Customer added successfully.")
             add_dialog.accept()
 
-            # Refresh all data
-            self.all_customers_data = IadminPageBack.fetch_clients()
+            self.all_customers_data = self.IadminPageBack.fetch_clients()
             self.update_pagination()
 
         save_btn.clicked.connect(save_customer)
@@ -842,7 +831,7 @@ class AdminCustomersPage(QtWidgets.QWidget):
         edit_dialog.exec_()
 
     def save_edited_customer(self, client_id, fname_input, mname_input, lname_input, contact_input, location_input,
-                             dialog):
+                         dialog):
         fname = fname_input.text().strip()
         mname = mname_input.text().strip()
         lname = lname_input.text().strip()
@@ -855,8 +844,8 @@ class AdminCustomersPage(QtWidgets.QWidget):
             return
 
         try:
-            admin_back = adminPageBack()
-            admin_back.update_client(
+            # Use the existing instance with correct username instead of creating new one
+            self.IadminPageBack.update_client(
                 client_id,
                 fname,
                 lname,
@@ -866,7 +855,7 @@ class AdminCustomersPage(QtWidgets.QWidget):
             )
 
             # Refresh UI
-            self.all_customers_data = admin_back.fetch_clients()
+            self.all_customers_data = self.IadminPageBack.fetch_clients()
             self.update_pagination()
             QtWidgets.QMessageBox.information(dialog, "Success", "Customer updated successfully.")
             dialog.accept()
@@ -955,6 +944,7 @@ class AdminCustomersPage(QtWidgets.QWidget):
         preview_dialog.setWindowTitle("Print Preview - Customer List")
         preview_dialog.paintRequested.connect(document.print_)
         preview_dialog.exec_()
+        self.IadminPageBack.log_action("Printed customer list preview")
 
 
 class ScrollableTextWidget(QtWidgets.QWidget):

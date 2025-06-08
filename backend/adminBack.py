@@ -33,15 +33,11 @@ class adminPageBack:
 
     def fetch_clients(self):
         client_repository = ClientRepository()
-        clients = client_repository.get_all_clients()
-        self.log_action("Fetched all clients")
-        return clients
+        return client_repository.get_all_clients()
 
     def fetch_users(self):
         user_repository = UserRepository()
-        users = user_repository.get_all_employee()
-        self.log_action("Fetched all users")
-        return users
+        return user_repository.get_all_employee()
 
     def fetch_user_by_id(self, user_id):
         user_repository = UserRepository()
@@ -51,9 +47,8 @@ class adminPageBack:
 
     def fetch_billing(self):
         billing_repository = BillingRepository()
-        billing = billing_repository.get_all_billing()
-        self.log_action("Fetched all billing records")
-        return billing
+        return  billing_repository.get_all_billing()
+
 
     def add_billing(self, billing_due, billing_total, billing_consumption, reading_id, client_id, categ_id,
                     billing_date, billing_status, billing_amount, billing_sub_capital, billing_late_payment,
@@ -82,39 +77,35 @@ class adminPageBack:
 
     def fetch_categories(self):
         category_repository = CategoryRepository()
-        categories = category_repository.get_category()
-        self.log_action("Fetched all categories")
-        return categories
+        return category_repository.get_category()
 
     def get_category_by_id(self, id):
         category_repository = CategoryRepository()
-        category = category_repository.get_category_by_id(id)
-        self.log_action(f"Fetched category by ID: {id}")
-        return category
+        return category_repository.get_category_by_id(id)
 
     def toggle_category_status(self, id, status):
         category_repository = CategoryRepository()
         result = category_repository.toggle_status_category(id, status)
-        self.log_action(f"Toggled category status: ID={id}, Status={status}")
+        if result:
+            self.log_action(f"Toggled category status: ID={id}, Status={status}")
         return result
 
     def fetch_address(self):
         address_repository = AddressRepository()
-        address = address_repository.get_address()
-        self.log_action("Fetched all addresses")
-        return address
+        return address_repository.get_address()
 
     def get_address_by_id(self, id):
         address_repository = AddressRepository()
-        address = address_repository.get_address_by_id(id)
-        self.log_action(f"Fetched address by ID: {id}")
-        return address
+        return address_repository.get_address_by_id(id)
 
-    def toggle_address_status(self, id, status):
-        address_repository = AddressRepository()
-        result = address_repository.toggle_status(id, status)
-        self.log_action(f"Toggled address status: ID={id}, Status={status}")
+    def toggle_address_status(self, address_id, new_status):
+        address_repo = AddressRepository()
+        result = address_repo.toggle_status(address_id, new_status)
+        if result:
+            self.log_action(f"Changed address ID {address_id} to status {new_status}")
         return result
+
+
 
     def add_reading(self, read_date, prev_read, pres_read, meter_id):
         reading_repository = ReadingRepository()
@@ -136,20 +127,15 @@ class adminPageBack:
 
     def update_meter_latest_reading(self, pres_read, read_date, meter_id):
         meter_repository = MeterRepository()
-
         return meter_repository.update_meter_latest_reading(pres_read, read_date, meter_id)
     
     def fetch_rate_blocks_by_categ(self, categ_id):
         rateblock_repo = RateBlockRepository()
-        blocks = rateblock_repo.get_rate_block_by_category(categ_id)
-        self.log_action(f"Fetched rate blocks for category ID: {categ_id}")
-        return blocks
+        return rateblock_repo.get_rate_block_by_category(categ_id)
 
     def fetch_transactions(self):
         transactions_repository = TransactionRepository()
-        transactions = transactions_repository.get_all_transaction()
-        self.log_action("Fetched all transactions")
-        return transactions
+        return transactions_repository.get_all_transaction()
 
     def update_client(self, client_id, fname, lname, contact, location, mname):
         client_repository = ClientRepository()
@@ -160,14 +146,13 @@ class adminPageBack:
     def update_client_status(self, client_id, new_status):
         client_repository = ClientRepository()
         result = client_repository.update_client_status(client_id, new_status)
-        self.log_action(f"Updated client status: ID={client_id}, Status={new_status}")
+        if result:
+            self.log_action(f"Updated client status: ID={client_id}, Status={new_status}")
         return result
 
     def fetch_meters(self):
         meter_repository = MeterRepository()
-        meters = meter_repository.get_all_meters()
-        self.log_action("Fetched all meters")
-        return meters
+        return meter_repository.get_all_meters()
 
     def update_meter(self, meter_id, serial_number, meter_code, last_read):
         meter_repository = MeterRepository()
@@ -205,8 +190,29 @@ class adminPageBack:
 
     def update_rate_block(self, block_id, is_minimum, min_con, max_con, rate):
         rateblock_repo = RateBlockRepository()
-        return rateblock_repo.update_rate_block(block_id, is_minimum, min_con, max_con, rate)
+        result = rateblock_repo.update_rate_block(block_id, is_minimum, min_con, max_con, rate)
+        if result:
+            self.log_action(f"Updated rate block ID {block_id}: "
+                            f"{'Fixed' if is_minimum else 'Per Cubic Meter'} rate = {rate}, "
+                            f"Range = {min_con} to {max_con if max_con is not None else '+'}")
+        return result
 
     def delete_rate_block(self, block_id):
         rateblock_repo = RateBlockRepository()
         return rateblock_repo.delete_rate_block(block_id)
+
+    def replace_meter(self, old_meter_id, new_serial_number):
+        meter_repository = MeterRepository()
+        success = meter_repository.replace_meter(old_meter_id, new_serial_number)
+        if success:
+            self.log_action(f"Replaced meter ID {old_meter_id} with new serial '{new_serial_number}'")
+        return success
+
+    def serial_exists(self, serial_number):
+        meter_repo = MeterRepository()
+        return meter_repo.serial_exists(serial_number)
+
+
+
+
+

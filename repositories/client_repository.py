@@ -1,4 +1,6 @@
 import psycopg2
+from PyQt5 import QtWidgets
+
 from database.Database import DBConnector
 
 class ClientRepository:
@@ -107,18 +109,22 @@ class ClientRepository:
             cursor.close()
             conn.close()
 
+
     def update_client_status(self, client_id, new_status):
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("""
-                UPDATE CLIENT 
-                SET CLIENT_STATUS = %s 
-                WHERE CLIENT_ID = %s
-            """, (new_status, client_id))
+            cursor.execute(
+                "UPDATE CLIENT SET CLIENT_STATUS = %s WHERE CLIENT_ID = %s",
+                (new_status, client_id)
+            )
             conn.commit()
+            return True  # ✅ Add this line
+        except Exception as e:
+            print("Database Error:", e)
+            return False  # ✅ Optional for error handling
         finally:
             cursor.close()
-            conn.close()   
+            conn.close()        
             
             

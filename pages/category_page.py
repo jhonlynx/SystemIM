@@ -16,10 +16,12 @@ from repositories.category_repository import CategoryRepository
 
 
 class CategoryPage(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, username, parent=None):
         super().__init__()
         self.parent = parent
+        self.username = username
         self.rateblock_panel = None
+        self.IadminPageBack = adminPageBack(self.username)
         self.setup_ui()
 
     def create_scrollable_cell(self, row, column, text):
@@ -68,22 +70,6 @@ class CategoryPage(QtWidgets.QWidget):
 
         search_add_layout.addLayout(search_container)
 
-        # Add button with icon
-        add_btn = QtWidgets.QPushButton("ADD ADDRESS", icon=QtGui.QIcon("images/add.png"))
-        add_btn.setStyleSheet("""
-            QPushButton {
-                background-color: rgb(229, 115, 115);
-                color: white;
-                padding: 8px 15px;
-                border-radius: 4px;
-                font-family: 'Roboto', sans-serif;
-            }
-            QPushButton:hover {
-                background-color: rgb(200, 100, 100);
-            }
-        """)
-        add_btn.clicked.connect(self.show_add_category_page)
-        search_add_layout.addWidget(add_btn)
 
         header_layout.addLayout(search_add_layout)
         layout.addLayout(header_layout)
@@ -122,9 +108,7 @@ class CategoryPage(QtWidgets.QWidget):
         self.categorys_table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.categorys_table.setWordWrap(False)
 
-        IadminPageBack = adminPageBack()
-
-        self.populate_table(IadminPageBack.fetch_categories())
+        self.populate_table(self.IadminPageBack.fetch_categories())
 
         # Adjust table properties
         self.categorys_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
@@ -138,7 +122,7 @@ class CategoryPage(QtWidgets.QWidget):
         # Add table to the main layout with full expansion
         layout.addWidget(self.categorys_table)
 
-    def populate_table(self, data):
+    def populate_table(self, data, row=None):
         self.categorys_table.setRowCount(0)
         self.categorys_table.setRowCount(len(data))
 
@@ -186,7 +170,7 @@ class CategoryPage(QtWidgets.QWidget):
             actions_layout.setSpacing(15)
             actions_layout.setAlignment(QtCore.Qt.AlignCenter)
 
-            edit_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("images/edit.png"))
+            edit_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("../images/edit.png"))
             edit_btn.setIconSize(QtCore.QSize(24, 24))
             edit_btn.setStyleSheet("""
                 QPushButton {
@@ -194,14 +178,14 @@ class CategoryPage(QtWidgets.QWidget):
                     border: none;
                     border-radius: 4px;
                 }
-                QPushButton:hover {
+                QPushButton:hover {F
                     background-color: #f0f0f0;
                 }
             """)
-            edit_btn.clicked.connect(lambda _, row=row: self.show_edit_category_page(row))
+            edit_btn.clicked.connect(lambda _, r=row: self.show_edit_category_page(r))
             actions_layout.addWidget(edit_btn)
 
-            view_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("images/view.png"))
+            view_btn = QtWidgets.QPushButton(icon=QtGui.QIcon("../images/view.png"))
             view_btn.setIconSize(QtCore.QSize(24, 24))
             view_btn.setToolTip("View Rate Blocks")
             view_btn.setStyleSheet("""
@@ -228,134 +212,6 @@ class CategoryPage(QtWidgets.QWidget):
         self.rateblock_panel.resize(self.width(), self.height())
         self.rateblock_panel.move(self.width(), 0)
         self.rateblock_panel.open_panel()
-
-    def show_add_category_page(self):
-        add_dialog = QtWidgets.QDialog(self)
-        add_dialog.setWindowTitle("New Category")
-        add_dialog.setModal(True)
-        add_dialog.setFixedSize(600, 200)
-        add_dialog.setStyleSheet("""
-            QDialog {
-                background-color: #C9EBCB;
-            }
-            QLabel {
-                font-family: 'Arial', sans-serif;
-                font-weight: bold;
-            }
-        """)
-
-        layout = QtWidgets.QVBoxLayout(add_dialog)
-        layout.setContentsMargins(30, 10, 30, 10)
-        layout.setSpacing(10)
-
-        # Title
-        title = QtWidgets.QLabel("ADD NEW CATEGORY")
-        title.setStyleSheet("""
-            font-size: 20px;
-            padding: 10px;
-        """)
-        title.setAlignment(QtCore.Qt.AlignCenter)
-        layout.addWidget(title)
-
-        # Form layout
-        form_layout = QtWidgets.QGridLayout()
-        form_layout.setHorizontalSpacing(40)
-        form_layout.setVerticalSpacing(20)
-
-        input_style = """
-            QLineEdit {
-                font-family: 'Arial';
-                font-size: 14px;
-                padding: 8px;
-                border: 1px solid #bdc3c7;
-                border-radius: 4px;
-                background-color: #ffffff;
-            }
-        """
-
-        # Create reusable label+input block
-        def create_labeled_widget(label_text, widget):
-            wrapper = QtWidgets.QVBoxLayout()
-            label = QtWidgets.QLabel(label_text)
-            label.setFont(QtGui.QFont("Arial", 10))
-            wrapper.addWidget(label)
-            wrapper.addWidget(widget)
-            return wrapper
-
-        # Category input
-        category_name_input = QtWidgets.QLineEdit()
-        category_name_input.setStyleSheet(input_style)
-
-        form_layout.addLayout(create_labeled_widget("CATEGORY NAME:", category_name_input), 0, 0)
-
-        layout.addLayout(form_layout)
-        layout.addStretch()
-
-        # Button container
-        button_container = QtWidgets.QWidget()
-        button_layout = QtWidgets.QHBoxLayout(button_container)
-        button_layout.setAlignment(QtCore.Qt.AlignRight)
-
-        cancel_btn = QtWidgets.QPushButton("Cancel")
-        cancel_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #95a5a6;
-                color: white;
-                padding: 8px 15px;
-                border-radius: 4px;
-                font-family: 'Roboto', sans-serif;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #7f8c8d;
-            }
-        """)
-        cancel_btn.clicked.connect(add_dialog.reject)
-
-        save_btn = QtWidgets.QPushButton("Save")
-        save_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                padding: 8px 15px;
-                border-radius: 4px;
-                font-family: 'Roboto', sans-serif;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #219a52;
-            }
-        """)
-
-        def save_action():
-            if not category_name_input.text().strip():
-                QMessageBox.warning(add_dialog, "Validation Error", "Category name cannot be empty.")
-                return
-
-            # Get the category name from input
-            category_name = category_name_input.text().strip()
-
-            # Create a new category in the database
-            IadminPageBack = adminPageBack()
-            category_repository = CategoryRepository()
-            category_repository.create_category(category_name, "Active")
-
-            # Show success message
-            QMessageBox.information(add_dialog, "Success", f"Category '{category_name}' has been successfully added.")
-
-            # Refresh the table with updated data
-            self.populate_table(IadminPageBack.fetch_categories())
-
-            # Close the dialog
-            add_dialog.accept()
-
-        # After defining save_action function
-        save_btn.clicked.connect(save_action)  # Add this line
-        button_layout.addWidget(cancel_btn)
-        button_layout.addWidget(save_btn)
-        layout.addWidget(button_container)
-
-        add_dialog.exec_()
 
     def show_edit_category_page(self, row):
         # Get the category name from the ScrollableTextWidget
@@ -482,16 +338,18 @@ class CategoryPage(QtWidgets.QWidget):
                     category_id = toggle_button.property("category_id")
 
                     # Update the category in the database
-                    IadminPageBack = adminPageBack()
                     category_repository = CategoryRepository()
                     category_repository.update_category(category_id, new_category_name)
+                    
+                    # Log the action with the actual username
+                    self.IadminPageBack.log_action(f"Updated category from '{current_name}' to '{new_category_name}'")
 
                     # Show success message
                     QMessageBox.information(edit_dialog, "Success",
                                             f"Category '{new_category_name}' has been successfully updated.")
 
                     # Refresh the table with updated data
-                    self.populate_table(IadminPageBack.fetch_categories())
+                    self.populate_table(self.IadminPageBack.fetch_categories())
 
             # Close the dialog
             edit_dialog.accept()
@@ -524,10 +382,9 @@ class CategoryPage(QtWidgets.QWidget):
                     )
 
                     if reply == QtWidgets.QMessageBox.Yes:
-                        IadminPageBack = adminPageBack()
-                        IadminPageBack.toggle_category_status(category_id, 'Inactive')
+                        self.IadminPageBack.toggle_category_status(category_id, 'Inactive')
                         # Refresh the table
-                        self.populate_table(IadminPageBack.fetch_categories())
+                        self.populate_table(self.IadminPageBack.fetch_categories())
 
     def toggle_search_input(self, text):
         if text == "Category":
@@ -555,8 +412,7 @@ class CategoryPage(QtWidgets.QWidget):
             toggle_button = container.findChild(QtWidgets.QPushButton)
             if toggle_button:
                 category_id = toggle_button.property("category_id")
-                IadminPageBack = adminPageBack()
-                category_info = IadminPageBack.get_category_by_id(category_id)
+                category_info = self.IadminPageBack.get_category_by_id(category_id)
                 current_status = category_info[0][2]  # 'Active' or 'Inactive'
                 next_status = 'Inactive' if current_status == 'Active' else 'Active'
 
@@ -572,7 +428,7 @@ class CategoryPage(QtWidgets.QWidget):
 
                 if reply == QMessageBox.Yes:
                     # Update DB
-                    IadminPageBack.toggle_category_status(category_id, next_status)
+                    self.IadminPageBack.toggle_category_status(category_id, next_status)
                     # Update label and toggle state
                     label.setText(next_status)
                     label.setStyleSheet(
@@ -583,6 +439,7 @@ class CategoryPage(QtWidgets.QWidget):
                     toggle_button.setChecked(current_status == "Active")  # Convert to boolean
 
                 toggle_button.blockSignals(False)
+                
 
 
 class ScrollableTextWidget(QtWidgets.QWidget):
@@ -712,7 +569,9 @@ class RateBlockPanel(QtWidgets.QWidget):
         self.setFixedWidth(int(parent.width() * 0.6))
         self.setStyleSheet("background-color: #ffffff; border-left: 2px solid #ccc;")
 
-        self.admin = adminPageBack()
+        # Get the username from the parent CategoryPage
+        self.username = parent.username if hasattr(parent, 'username') else "System"
+        self.admin = adminPageBack(self.username)  # Pass the username here
         self.category_id = self.get_category_id_by_name(category_name)
         self.setup_ui()
 
@@ -837,8 +696,14 @@ class RateBlockPanel(QtWidgets.QWidget):
                     return
                 if is_edit:
                     self.admin.update_rate_block(block[0], is_min, min_val, max_val, rate_val)
+                    # Log the edit action
+                    range_text = f"{min_val}+" if max_val is None else f"{min_val}-{max_val}"
+                    self.admin.log_action(f"Updated rate block (Range: {range_text}, Rate: {rate_val}) in category '{self.category_name}'")
                 else:
                     self.admin.insert_rate_block(is_min, min_val, max_val, rate_val, self.category_id)
+                    # Log the add action
+                    range_text = f"{min_val}+" if max_val is None else f"{min_val}-{max_val}"
+                    self.admin.log_action(f"Added rate block (Range: {range_text}, Rate: {rate_val}) to category '{self.category_name}'")
                 self.refresh_table()
                 QMessageBox.information(dialog, "Success", "Rate block saved successfully.")
                 # Don't close the dialog after saving to allow adding multiple rate blocks

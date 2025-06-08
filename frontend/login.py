@@ -400,15 +400,16 @@ class LoginWindow(QMainWindow):
 
     def login(self):
         login_back = LoginPagesBack()
-        type = login_back.checkUserType(self.ui.username.text(), self.ui.password.text())
+        username = self.ui.username.text()
+        type = login_back.checkUserType(username, self.ui.password.text())
         if type == 'Admin':
             from adminPanel import AdminPanel
-            self.admin = AdminPanel()
+            self.admin = AdminPanel(username)
             self.admin.show()
             self.close()
         elif type == 'Employee':
             from workersPanel import WorkersPanel
-            self.worker = WorkersPanel()
+            self.worker = WorkersPanel(username)
             self.worker.show()
             self.close()
         else:

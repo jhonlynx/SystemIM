@@ -44,3 +44,4 @@ class ReadingRepository:
         conn.close()
         return new_reading_id
 
+
