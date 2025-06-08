@@ -5,9 +5,9 @@ class LoginPagesBack:
     def __init__(self):
         # Initialize DB connection
         self.conn = psycopg2.connect(
-            dbname="system",
+            dbname="billingSystem",
             user="postgres",
-            password="123456",
+            password="egoist123",
             host="localhost",
             port="5432"
         )

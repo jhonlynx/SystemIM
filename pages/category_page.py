@@ -503,32 +503,6 @@ class CategoryPage(QtWidgets.QWidget):
 
         edit_dialog.exec_()
 
-    def deactivate_category(self, row):
-        # Get the category name from the ScrollableTextWidget
-        cell_widget = self.categorys_table.cellWidget(row, 0)
-        if cell_widget and isinstance(cell_widget, ScrollableTextWidget):
-            category_name = cell_widget.text()
-
-            # Get the status widget to find the category_id
-            status_container = self.categorys_table.cellWidget(row, 2)
-            if status_container:
-                toggle_button = status_container.findChild(QtWidgets.QPushButton)
-                if toggle_button:
-                    category_id = toggle_button.property("category_id")
-
-                    reply = QtWidgets.QMessageBox.question(
-                        self, 'Deactivate Category',
-                        f"Are you sure you want to deactivate category {category_name}?",
-                        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                        QtWidgets.QMessageBox.No
-                    )
-
-                    if reply == QtWidgets.QMessageBox.Yes:
-                        IadminPageBack = adminPageBack()
-                        IadminPageBack.toggle_category_status(category_id, 'Inactive')
-                        # Refresh the table
-                        self.populate_table(IadminPageBack.fetch_categories())
-
     def toggle_search_input(self, text):
         if text == "Category":
             self.search_input.hide()

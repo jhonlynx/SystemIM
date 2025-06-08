@@ -399,20 +399,27 @@ class LoginWindow(QMainWindow):
         self.setWindowIcon(QtGui.QIcon("../images/logosowbasco.png"))
 
     def login(self):
-        login_back = LoginPagesBack()
-        type = login_back.checkUserType(self.ui.username.text(), self.ui.password.text())
-        if type == 'Admin':
-            from adminPanel import AdminPanel
-            self.admin = AdminPanel()
-            self.admin.show()
-            self.close()
-        elif type == 'Employee':
-            from workersPanel import WorkersPanel
-            self.worker = WorkersPanel()
-            self.worker.show()
-            self.close()
-        else:
-            QMessageBox.warning(self, "Error", "Invalid username or password")
+        try:
+            login_back = LoginPagesBack()
+            user_type = login_back.checkUserType(self.ui.username.text(), self.ui.password.text())
+
+            if user_type == 'Admin':
+                from adminPanel import AdminPanel
+                self.admin = AdminPanel()
+                self.admin.show()
+                self.close()  # Close login window after opening admin panel
+
+            elif user_type == 'Employee':
+                from workersPanel import WorkersPanel
+                self.worker = WorkersPanel()
+                self.worker.show()
+                self.close()  # Close login window after opening worker panel
+
+            else:
+                QMessageBox.warning(self, "Error", "Invalid username or password")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Login Error", f"An error occurred: {e}")
 
 
 if __name__ == "__main__":

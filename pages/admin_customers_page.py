@@ -465,7 +465,7 @@ class AdminCustomersPage(QtWidgets.QWidget):
 
     def toggle_status(self, row, label):
         table = self.customers_table
-        container = table.cellWidget(row, 8)
+        container = table.cellWidget(row, 9)
         if container:
             toggle_button = container.findChild(QtWidgets.QPushButton)
             if toggle_button:
@@ -515,8 +515,6 @@ class AdminCustomersPage(QtWidgets.QWidget):
                         else:
                             label.setText("Inactive")
                             label.setStyleSheet("color: #E57373; font-weight: bold;")
-
-                        QtWidgets.QMessageBox.information(self, "Success", "Status updated successfully.")
 
                     except Exception as e:
                         QtWidgets.QMessageBox.critical(self, "Error", f"Failed to update status: {str(e)}")
