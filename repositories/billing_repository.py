@@ -198,3 +198,12 @@ class BillingRepository:
             cursor.close()
             conn.close()
             return False
+        
+    def update_status(self, billing_id, new_status):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE billing SET billing_status = %s WHERE billing_id = %s", (new_status, billing_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+

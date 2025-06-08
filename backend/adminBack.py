@@ -60,6 +60,11 @@ class adminPageBack:
                                                    billing_penalty, billing_total_charge)
         self.log_action(f"Added billing for client ID: {client_id}")
         return result
+    
+    def update_billing_status(self, billing_id, new_status):
+        billing_repo = BillingRepository()
+        return billing_repo.update_status(billing_id, new_status)
+
 
     def fetch_client_by_id(self, client_id):
         client_repository = ClientRepository()
